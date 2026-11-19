@@ -57,6 +57,10 @@ select ok(not has_table_privilege('authenticated','public.refund_requests','SELE
 select ok(not has_table_privilege('authenticated','public.refund_requests','INSERT'),'no direct state mutation');
 select ok(not has_function_privilege('authenticated','private.refund_json(public.refund_requests)','EXECUTE'),'internal projection not public');
 select pg_temp.set_test_user('fa000000-0000-0000-0000-000000000002',true);
+-- set_test_user dá amr=password fresco por padrão agora (is_full_login_session()); este teste
+-- quer um JWT com login antigo (amr presente, mas não recente) -- remover o amr por completo
+-- derrubaria is_full_login_session()/has_app_access() primeiro, trocando a mensagem esperada.
+select set_config('request.jwt.claims',(current_setting('request.jwt.claims')::jsonb||jsonb_build_object('amr',jsonb_build_array(jsonb_build_object('method','password','timestamp',extract(epoch from now()-interval '1 hour')::bigint))))::text,true);
 select throws_ok($$select public.act_on_refund_request((select (r->>'id')::uuid from requests),'review','Análise administrativa iniciada','fa000000-0000-0000-0000-000000000020',1)$$,'42501','RECENT_AUTH_REQUIRED','admin decision needs recent signed authentication');
 select pg_temp.refund_admin();
 select public.act_on_refund_request((select (r->>'id')::uuid from requests),'review','Análise administrativa iniciada','fa000000-0000-0000-0000-000000000020',1);

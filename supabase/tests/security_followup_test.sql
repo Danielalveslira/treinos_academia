@@ -70,9 +70,11 @@ select throws_ok($$select public.review_blocked_account_deletion(gen_random_uuid
 reset role;
 
 -- ===== Contrato global (o mesmo de notification_security_test, aqui como rede de segurança desta migration) ======
+-- auth_email_first_ready() (P2, 20261223000004) é anon de propósito -- ver nota em
+-- notification_security_test.sql; nunca é controle de autorização por si só.
 select is((select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public' and p.prosecdef and p.prokind = 'f' and has_function_privilege('anon', p.oid, 'execute')
-    and p.proname not in ('list_published_professional_listings', 'is_superadmin', 'has_app_access', 'is_community_member', 'is_community_owner', 'can_post_in_community', 'community_access_allowed', 'push_delivery_ack', 'submit_commercial_lead', 'public_list_professionals', 'public_get_professional', 'public_professional_avatar_visible','public_product_catalog','authorize_storefront_media','public_storefront_sitemap','public_listing_sitemap')),
+    and p.proname not in ('list_published_professional_listings', 'is_superadmin', 'has_app_access', 'is_community_member', 'is_community_owner', 'can_post_in_community', 'community_access_allowed', 'push_delivery_ack', 'submit_commercial_lead', 'public_list_professionals', 'public_get_professional', 'public_professional_avatar_visible','public_product_catalog','authorize_storefront_media','public_storefront_sitemap','public_listing_sitemap','auth_email_first_ready')),
   0, 'nenhuma função SECURITY DEFINER fora da lista pública é executável por anon');
 select is((select count(*)::int from pg_proc p where p.prosecdef and p.prokind = 'f' and p.pronamespace in ('public'::regnamespace, 'private'::regnamespace)
   and exists (select 1 from unnest(p.proconfig) c where c ~ '^search_path=' and c <> 'search_path=""' and c !~ 'pg_temp')),

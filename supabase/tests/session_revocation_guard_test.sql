@@ -18,6 +18,16 @@ insert into auth.sessions (id, user_id, created_at, updated_at) values
 insert into auth.sessions (id, user_id, created_at, updated_at, not_after) values
   ('c4900000-0000-0000-0000-000000000009', 'c4000000-0000-0000-0000-000000000001', now(), now(), now() - interval '1 minute');
 
+-- A e B representam contas com os termos vigentes aceitos. Sem isso, a
+-- fixture testa o gate legal (has_app_access) em vez da revogação de sessão.
+update public.users u set
+  legal_acceptance_version = p.version,
+  legal_acceptance_digest = p.digest,
+  legal_acceptance_accepted_at = now()
+from public.legal_policy p
+where p.id and p.published
+  and u.id in ('c4000000-0000-0000-0000-000000000001', 'c4000000-0000-0000-0000-000000000002');
+
 create temp table ids as select
   'c4000000-0000-0000-0000-000000000001'::text as a,
   'c4000000-0000-0000-0000-000000000002'::text as b;
@@ -32,10 +42,16 @@ $$;
 create or replace function pg_temp.as_user_with_session(p_uid text, p_session text) returns void language plpgsql as $$
 begin
   perform pg_temp.set_test_user( coalesce(p_uid, ''), true);
+  -- set_test_user já grava role/amr (sessão "normal" por padrão, is_full_login_session() do
+  -- 20261223000003); preserva os dois aqui e só sobrescreve sub/session_id, que é o propósito
+  -- deste helper (testar session_id nulo/malformado/de outro usuário/expirado).
   perform set_config(
     'request.jwt.claims',
     case when p_uid is null or p_uid = '' then '{}'
-      else jsonb_build_object('sub', p_uid, 'session_id', p_session)::text
+      else jsonb_build_object(
+        'sub', p_uid, 'session_id', p_session, 'role', 'authenticated',
+        'amr', jsonb_build_array(jsonb_build_object('method', 'password', 'timestamp', extract(epoch from now())::int))
+      )::text
     end,
     true
   );

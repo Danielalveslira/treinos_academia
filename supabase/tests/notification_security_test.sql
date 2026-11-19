@@ -95,10 +95,14 @@ select lives_ok($$select public.is_superadmin()$$, 'auxiliares de RLS continuam 
 reset role;
 
 -- ===== Contrato de privilégios (estado, não comportamento) =====
+-- auth_email_first_ready() (P2, 20261223000004_auth_email_first_switch.sql) é a única adição
+-- legítima a esta lista: uma visita sem sessão nenhuma precisa checar essa flag de servidor
+-- ANTES de decidir qual fluxo de cadastro seguir -- nunca é controle de autorização em si (o
+-- gate de verdade continua em is_full_login_session()/has_app_access()), só orientação de UI.
 select is((select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public' and p.prosecdef and p.prokind = 'f' and has_function_privilege('anon', p.oid, 'execute')
-    and p.proname not in ('list_published_professional_listings', 'is_superadmin', 'has_app_access', 'is_community_member', 'is_community_owner', 'can_post_in_community', 'community_access_allowed', 'push_delivery_ack', 'submit_commercial_lead', 'public_list_professionals', 'public_get_professional', 'public_professional_avatar_visible','public_product_catalog','authorize_storefront_media','public_storefront_sitemap','public_listing_sitemap')),
-  0, 'anon só executa a listagem pública, os auxiliares de RLS e o ACK de telemetria do Push');
+    and p.proname not in ('list_published_professional_listings', 'is_superadmin', 'has_app_access', 'is_community_member', 'is_community_owner', 'can_post_in_community', 'community_access_allowed', 'push_delivery_ack', 'submit_commercial_lead', 'public_list_professionals', 'public_get_professional', 'public_professional_avatar_visible','public_product_catalog','authorize_storefront_media','public_storefront_sitemap','public_listing_sitemap','auth_email_first_ready')),
+  0, 'anon só executa a listagem pública, os auxiliares de RLS, o ACK de telemetria do Push e a leitura da flag de e-mail primeiro');
 select is((select count(*)::int from pg_proc p where p.prosecdef and p.prokind = 'f' and p.pronamespace in ('public'::regnamespace, 'private'::regnamespace)
   and exists (select 1 from unnest(p.proconfig) c where c ~ '^search_path=' and c <> 'search_path=""' and c !~ 'pg_temp')),
   0, 'todo SECURITY DEFINER tem search_path vazio ou com pg_temp por último');

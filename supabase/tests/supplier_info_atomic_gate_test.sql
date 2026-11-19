@@ -6,6 +6,10 @@ insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,r
 values('75000000-0000-0000-0000-000000000001','authenticated','authenticated','supplier-gate@example.invalid','x',now(),'{}','{}',now(),now());
 update public.users set role='superadmin' where id='75000000-0000-0000-0000-000000000001';
 select pg_temp.set_test_user('75000000-0000-0000-0000-000000000001',true);
+-- set_test_user dá amr=password fresco por padrão agora (is_full_login_session()); este teste
+-- quer um JWT com login antigo (amr presente, mas não recente) -- remover o amr por completo
+-- derrubaria is_full_login_session()/has_app_access() primeiro, trocando a mensagem esperada.
+select set_config('request.jwt.claims',(current_setting('request.jwt.claims')::jsonb||jsonb_build_object('amr',jsonb_build_array(jsonb_build_object('method','password','timestamp',extract(epoch from now()-interval '1 hour')::bigint))))::text,true);
 select ok(not has_function_privilege('anon','public.admin_set_supplier_info_configured(boolean,text,boolean)','execute'),
   'anonymous execution remains revoked');
 select ok(not has_function_privilege('service_role','public.admin_set_supplier_info_configured(boolean,text,boolean)','execute'),

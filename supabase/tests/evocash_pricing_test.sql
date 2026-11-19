@@ -26,6 +26,9 @@ select throws_ok($$select public.admin_get_evocash_pricing()$$,'42501','PERMISSI
 select throws_ok($$select public.create_evocash_purchase_quote('1','e2000000-0000-0000-0000-000000000001')$$,'EVOCASH_QUOTES_PAUSED','quoting starts paused');
 reset role;
 select pg_temp.set_test_user('e1000000-0000-0000-0000-000000000001',true);
+-- A sessão plena exige método password; sem timestamp de autenticação ela ainda
+-- pode consultar, mas não executar a ação financeira que exige reautenticação recente.
+select set_config('request.jwt.claims',(current_setting('request.jwt.claims')::jsonb||jsonb_build_object('amr',jsonb_build_array(jsonb_build_object('method','password'))))::text,true);
 set local role authenticated;
 select is(public.admin_get_evocash_pricing()->>'current',null,'migration invents no initial price');
 select throws_ok($$select public.admin_publish_evocash_price((select value from cfg),null,0,'e2000000-0000-0000-0000-000000000002','Initial test price')$$,'42501','RECENT_AUTH_REQUIRED','fresh JWT without AMR cannot publish');

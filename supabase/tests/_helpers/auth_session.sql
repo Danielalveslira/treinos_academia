@@ -12,8 +12,24 @@ begin
   if exists(select 1 from auth.users where id=p_uid::uuid) then
    insert into auth.sessions(id,user_id,created_at,updated_at)
     values(v_session,p_uid::uuid,now(),now()) on conflict(id) do nothing;
+   -- Sessão de fixture representa, por padrão, um usuário normal e plenamente autorizado --
+   -- a mesma suposição que todo teste existente já fazia antes de is_full_login_session()
+   -- (20261223000003) exigir amr com password e onboarding concluído para has_app_access().
+   -- Sem isto, toda RPC gateada por has_app_access() voltaria FORBIDDEN para esta fixture,
+   -- quebrando testes anteriores que nunca tiveram a ver com o gate novo de sessão restrita.
+   insert into private.auth_onboarding_completed(user_id,completed_at,source)
+    values(p_uid::uuid,now(),'legacy') on conflict(user_id) do nothing;
+   -- Aceite legal NÃO é preenchido aqui de propósito: ao contrário de amr/onboarding (conceitos
+   -- novos que nenhum teste antigo podia ter previsto), o estado de aceite dos termos já era uma
+   -- dimensão deliberadamente variada por vários testes (aud_has_app_access_gates_test 16c,
+   -- supporters_failclosed_test, workout_participants_rpc_test -- alguns querem "aceitou", outros
+   -- "não aceitou ainda" de propósito). Um default aqui sempre quebraria um dos dois grupos. Cada
+   -- teste que precisa de aceite válido já grava isso explicitamente antes ou depois desta chamada.
   end if;
-  perform set_config('request.jwt.claims',jsonb_build_object('sub',p_uid,'role','authenticated','session_id',v_session)::text,p_local);
+  perform set_config('request.jwt.claims',jsonb_build_object(
+    'sub',p_uid,'role','authenticated','session_id',v_session,
+    'amr',jsonb_build_array(jsonb_build_object('method','password','timestamp',extract(epoch from now())::int))
+  )::text,p_local);
  end if;
  return coalesce(p_uid,'');
 end;
