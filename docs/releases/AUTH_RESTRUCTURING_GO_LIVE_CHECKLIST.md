@@ -156,6 +156,61 @@ não está pronto. Isso já está refletido na migration 03's dependência docum
   Nenhum segredo real em texto plano nos commits revisados (só senhas sintéticas de contas de
   teste descartáveis).
 
+## E. Correções do PR #153 pós-commit `d93a7cf`
+
+**Deadlock real em `public.finish_push_batch(text,jsonb)`**, identificado pelo teste de
+concorrência real `supabase/functions/process-push-outbox/concurrency.test.js` (6 workers reais
+disputando uma outbox de 120 entregas fanned-out para só 3 dispositivos). Causa raiz: a
+atualização de `push_subscriptions` fazia um UPDATE...FROM sem ordem de bloqueio definida -- dois
+workers cujos lotes tocassem os mesmos dois dispositivos podiam travar as linhas em ordem oposta
+(clássica condição de deadlock). `claim_push_jobs()` já garante lotes disjuntos de
+outbox/entregas entre workers (`for update skip locked`); `push_subscriptions` é a única tabela
+que pode ser compartilhada entre lotes de workers diferentes, porque um mesmo dispositivo pode ter
+várias notificações pendentes reivindicadas por workers distintos ao mesmo tempo.
+
+Correção em `supabase/migrations/20261223000008_fix_finish_push_batch_lock_order.sql`
+(`create or replace function`, aditiva, não edita a migration original): trava todas as
+assinaturas afetadas através de um CTE materializado, em ordem ascendente de `id`, antes de
+qualquer escrita -- a técnica padrão para tornar determinística a ordem de bloqueio de um UPDATE
+multi-linha entre chamadores concorrentes. Também corrige um bug de corretude latente que a falta
+de `group by` permitia: quando um lote tem mais de uma entrega para a mesma assinatura (exatamente
+o cenário de fan-out acima), o UPDATE antigo não tinha como escolher entre as linhas de entrega
+correspondentes, e o Postgres usava uma arbitrária; agora agrega com `bool_or()` em todas as
+entregas do lote para aquela assinatura. Preserva integralmente a idempotência (mesmas condições
+de transição de status) e o processamento paralelo (nenhuma restrição nova ao grau de
+concorrência, só à ordem de bloqueio).
+
+**Validação:** o teste real de concorrência passou **8 vezes consecutivas** (2 rodadas de
+reexecução, stacks limpas). A suíte pgTAP completa, reexecutada do zero após a correção:
+**121/121** -- incluindo os 9 arquivos que exercitam `finish_push_batch` diretamente
+(`push_explicit_activation_test.sql`, `workout_reminders_test.sql`,
+`comment_like_notifications_test.sql`, `notification_antispam_test.sql`,
+`web_push_hardening_test.sql`, `push_delivery_telemetry_test.sql`,
+`web_push_notifications_test.sql`, `notification_pipeline_test.sql`,
+`notification_security_test.sql`). Uma falha isolada nessa reexecução
+(`push_explicit_activation_test.sql`) não se repetiu numa stack limpa nem depois de mais 3
+rodadas do teste de concorrência -- não reproduzível, tratada como contaminação de uma sessão
+manual anterior na mesma instância de banco, não como regressão real.
+
+**`scripts/ads-ux-browser-smoke.mjs` (publicidade): progresso parcial, limite encontrado.**
+Adicionada a fixture `getAdvertisingCampaignsSummary` (respeitando o contrato real de
+`public.advertising_campaigns_summary` -- `{total, live, submitted}`), resolvendo o erro de build
+original. Também corrigidos, confirmados por leitura direta do componente (não suposição): o
+seletor de status (`AdStatusCard`/lista) precisa ficar restrito a `[data-testid^="ad-"]` (evita
+colidir com `<option>` ocultas do filtro), e pausar um anúncio exige clicar em "Gerenciar" primeiro
+-- comportamento já existente (`AdManagePage.jsx`, de um commit anterior à divisão de branches,
+não uma mudança nova), que o script nunca tinha acompanhado. Com essas correções, o script avança
+bem mais, mas ainda falha mais adiante numa sequência específica de reabertura do diálogo de pausa
+após uma mudança de estado simulada (`AD_PAUSE_STALE` vs `AD_PAUSE_LIMIT_CONFIRM_REQUIRED`) -- e,
+depois dela, em passos que dependem de UI genuinamente nova e ainda inexistente nesta branch (abas
+"Alterações"/"Pagamentos" com conteúdo novo, editor de imagem com recorte/zoom/rotação, assistente
+de criação com 3 em vez de 4 etapas) -- tudo isso só existe em `feat/advertiser-portal-ux`
+(`AdChangesTimeline.jsx`/`AdImageEditor.jsx`, ambos arquivos novos daquela branch; mudanças
+substanciais em `CreateAdWizard.jsx`/`AdManagePage.jsx`). Continuar exigiria reproduzir essa lógica
+de negócio sem poder testá-la visualmente aqui com confiança, ou trazer esse trabalho de UX para
+esta branch -- ambos fora do escopo pedido. O job `js` do CI permanece vermelho por essa razão
+residual; resolve-se integrando `feat/advertiser-portal-ux`.
+
 ## Única aprovação necessária
 
 Para prosseguir com a publicação (seções 8-9 do pedido), preciso de **uma confirmação sua** cobrindo:
