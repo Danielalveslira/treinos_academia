@@ -1,6 +1,5 @@
-// Autenticação das Edge Functions administrativas de mídia dos exercícios: JWT válido E papel
-// superadmin (a única "role" administrativa do projeto -- ver public.is_superadmin()). O papel é
-// lido com o service_role na tabela users (nunca de um claim do cliente).
+// Todas as Edge Functions administrativas usam a mesma autorização do banco.
+// is_superadmin() inclui sessão ativa, escopo completo e AAL2 quando habilitado.
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2'
 import { corsHeaders } from './cors.ts'
 
@@ -36,16 +35,9 @@ export async function authenticateSuperadmin(
   const { data: userData, error: userErr } = await userClient.auth.getUser()
   if (userErr || !userData?.user) return jsonError('NOT_AUTHENTICATED', 401)
   const uid = userData.user.id
-  const { data: sessionActive, error: sessionError } = await userClient.rpc('is_session_active')
-  if (sessionError || sessionActive !== true) return jsonError('SESSION_REVOKED', 401)
+  const { data: authorized, error: authError } = await userClient.rpc('is_superadmin')
+  if (authError || authorized !== true) return jsonError('FORBIDDEN', 403)
 
   const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
-  const { data: profile, error: profileErr } = await adminClient
-    .from('users')
-    .select('role')
-    .eq('id', uid)
-    .maybeSingle()
-  if (profileErr || profile?.role !== 'superadmin') return jsonError('FORBIDDEN', 403)
-
   return { uid, adminClient }
 }

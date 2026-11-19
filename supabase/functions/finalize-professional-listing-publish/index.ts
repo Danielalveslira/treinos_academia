@@ -62,6 +62,8 @@ Deno.serve(async (req) => {
     })
     const { data: userData, error: userErr } = await userClient.auth.getUser()
     if (userErr || !userData?.user) return jsonError('NOT_AUTHENTICATED', 401)
+    const { data: fullSession, error: sessionErr } = await userClient.rpc('is_full_login_session')
+    if (sessionErr || fullSession !== true) return jsonError('NOT_AUTHENTICATED', 401)
     const uid = userData.user.id
 
     // Nunca confia em owner_id do cliente -- só no uid resolvido pelo próprio JWT.

@@ -40,6 +40,7 @@ const STUBS = {
     export const Link = ({ children, to }) => <a href={to}>{children}</a>
     export const Navigate = ({ to }) => <div data-navigate={to} />
     export const useNavigate = () => (...args) => globalThis.__reg.navigate(...args)
+    export const useLocation = () => globalThis.__reg.location
   `,
   analytics: `export const track = () => {}`,
   layout: `
@@ -56,9 +57,17 @@ const STUBS = {
     export const registerUser = (...a) => globalThis.__reg.api.registerUser(...a)
     export const confirmSignupAndSyncPassword = (...a) => globalThis.__reg.api.confirm(...a)
     export const sendVerificationEmail = (...a) => globalThis.__reg.api.resend(...a)
+    export const emailFirstSignupReady = (...a) => globalThis.__reg.api.ready(...a)
+    export const requestEmailFirstSignup = (...a) => globalThis.__reg.api.requestEmailFirst(...a)
+    export const confirmEmailFirstOtp = (...a) => globalThis.__reg.api.confirmEmailFirst(...a)
+    export const syncEmailFirstPassword = (...a) => globalThis.__reg.api.syncEmailFirst(...a)
+    export const logoutUser = (...a) => globalThis.__reg.api.logout(...a)
   `,
   users: `export const isUsernameAvailable = (...a) => globalThis.__reg.api.available(...a)`,
-  completion: `export const completeUserProfile = (...a) => globalThis.__reg.api.complete(...a)`,
+  completion: `
+    export const completeUserProfile = (...a) => globalThis.__reg.api.complete(...a)
+    export const completeEmailFirstOnboarding = (...a) => globalThis.__reg.api.completeEmailFirst(...a)
+  `,
   catalog: `export const loadMunicipalityCatalog = () => Promise.resolve(null)`,
   legalService: `
     export const getActiveLegalBundle = () => globalThis.__reg.api.bundle()
@@ -166,10 +175,17 @@ beforeEach(() => {
     }
   globalThis.__reg = {
     navigate: (...args) => calls.push(['navigate', ...args]),
+    location: { state: null },
     auth: { user: null, loading: false, refreshProfile: log('refreshProfile') },
     online: true,
     api: {
       registerUser: log('registerUser', { user: { uid: 'u1' }, hasSession: true }),
+      ready: log('ready', false),
+      requestEmailFirst: log('requestEmailFirst', 'verification_required'),
+      confirmEmailFirst: log('confirmEmailFirst', { outcome: 'signup', uid: 'u1' }),
+      syncEmailFirst: log('syncEmailFirst'),
+      completeEmailFirst: log('completeEmailFirst'),
+      logout: log('logout'),
       confirm: log('confirm', { uid: 'u1', email: 'maria@exemplo.com' }),
       resend: log('resend'),
       available: log('available', true),
@@ -247,11 +263,11 @@ async function mount() {
 
 async function fillStep1(
   view,
-  { username = 'maria_fit', email = 'maria@exemplo.com', password = 'senha123' } = {}
+  { username = 'maria_fit', email = 'maria@exemplo.com', password = 'senhaSegura12345' } = {}
 ) {
   await view.change('username', username)
   await view.change('email', email)
-  await view.change('password', password)
+  if (view.fields.password()) await view.change('password', password)
 }
 
 const sexoSelect = (view) => view.root().findByType('select')
@@ -298,7 +314,7 @@ test('etapa 1: campos obrigatórios, e-mail e senha inválidos não avançam', a
   await view.click('Continuar')
   assert.equal(view.title(), 'Crie sua conta')
   assert.ok(view.errors().some((e) => /E-mail inválido/.test(e)))
-  assert.ok(view.errors().some((e) => /pelo menos 8/.test(e)))
+  assert.ok(view.errors().some((e) => /pelo menos 15/.test(e)))
   assert.equal(count('available'), 0, 'formato inválido não consulta o servidor')
   assert.equal(count('registerUser'), 0)
 })
@@ -309,8 +325,7 @@ test('etapa 1: mostrar/ocultar senha e requisitos compactos', async () => {
   await act(async () => view.root().findByProps({ 'aria-label': 'Mostrar senha' }).props.onClick())
   assert.equal(view.fields.password().props.type, 'text')
   assert.ok(view.root().findByProps({ 'aria-label': 'Ocultar senha' }))
-  assert.match(view.text(), /8\+ caracteres/)
-  assert.match(view.text(), /letras e números/)
+  assert.match(view.text(), /15\+ caracteres/)
 })
 
 test('@ indisponível bloqueia a etapa 1; o resultado é reaproveitado sem nova consulta', async () => {
@@ -353,7 +368,7 @@ test('3 etapas: avança, volta preservando tudo e cria a conta uma única vez', 
   assert.equal(sexoSelect(view).props.value, 'feminino', 'sexo preservado ao voltar')
   await view.click('Voltar')
   assert.equal(view.fields.username().props.value, 'maria_fit')
-  assert.equal(view.fields.password().props.value, 'senha123')
+  assert.equal(view.fields.password().props.value, 'senhaSegura12345')
   await view.click('Continuar')
   await view.click('Continuar')
   assert.equal(count('available'), 1, 'voltar/avançar com o mesmo @ não repete a consulta')
@@ -374,7 +389,7 @@ test('3 etapas: avança, volta preservando tudo e cria a conta uma única vez', 
   assert.equal(count('registerUser'), 1)
   assert.deepEqual(calls.find((c) => c[0] === 'registerUser').slice(1), [
     'maria@exemplo.com',
-    'senha123',
+    'senhaSegura12345',
     undefined,
   ])
   const complete = calls.find((c) => c[0] === 'complete')
@@ -443,7 +458,7 @@ test('consentimento opcional de medidas corporais segue ao aceite apenas quando 
   assert.equal(accept[3], 'signup')
 })
 
-test('retorno sem sessão não afirma envio nem prende o usuário na confirmação', async () => {
+test('retorno sem sessão abre confirmação sem afirmar entrega', async () => {
   globalThis.__reg.api.registerUser = (...args) => {
     calls.push(['registerUser', ...args])
     return Promise.resolve({ user: null, hasSession: false })
@@ -451,9 +466,6 @@ test('retorno sem sessão não afirma envio nem prende o usuário na confirmaç�
   const view = await mount()
   await reachFinal(view)
   await view.click('Criar conta')
-  assert.equal(view.title(), 'Continue com seu e-mail')
-  assert.match(view.text(), /Não foi possível confirmar a criação/)
-  await view.click('Tenho um código')
   assert.equal(view.title(), 'Confirme seu e-mail')
   assert.doesNotMatch(view.text(), /[Ee]nviamos|[Cc]ódigo reenviado|[Jj]á está cadastrado/)
   assert.equal(count('complete'), 0)
@@ -463,39 +475,34 @@ test('retorno sem sessão não afirma envio nem prende o usuário na confirmaç�
   assert.equal(view.fields.email().props.disabled, undefined)
 })
 
-test('duplicidade explícita oferece entrada e recuperação sem exigir OTP', async () => {
+test('duplicidade explícita tem a mesma experiência pública do cadastro', async () => {
   globalThis.__reg.api.registerUser = (...args) => {
     calls.push(['registerUser', ...args])
-    return Promise.resolve({ user: null, hasSession: false, outcome: 'duplicate' })
+    return Promise.resolve({ user: null, hasSession: false, outcome: 'verification_required' })
   }
   const view = await mount()
   await reachFinal(view)
   await view.click('Criar conta')
-  assert.equal(view.title(), 'Continue com seu e-mail')
-  assert.match(view.text(), /Não foi possível criar uma nova conta/)
+  assert.equal(view.title(), 'Confirme seu e-mail')
+  assert.doesNotMatch(view.text(), /[Jj]á cadastrad|[Cc]onta existente/)
   assert.doesNotMatch(view.text(), /[Ee]nviamos|[Cc]ódigo reenviado/)
   assert.equal(count('confirm'), 0)
   await view.click('Corrigir e-mail')
   assert.equal(view.fields.email().props.value, 'maria@exemplo.com')
 })
 
-test('falha de rede ao criar: mensagem específica, dados mantidos, nova tentativa possível', async () => {
-  let attempts = 0
+test('resposta perdida não repete cadastro automaticamente e permite informar código', async () => {
   globalThis.__reg.api.registerUser = (...args) => {
     calls.push(['registerUser', ...args])
-    attempts += 1
-    return attempts === 1
-      ? Promise.reject(new TypeError('Failed to fetch'))
-      : Promise.resolve({ user: { uid: 'u1' }, hasSession: true })
+    return Promise.resolve({ user: null, hasSession: false, outcome: 'request_uncertain' })
   }
   const view = await mount()
   await reachFinal(view)
   await view.click('Criar conta')
-  assert.match(view.text(), /Sem conexão com o servidor/)
-  assert.equal(view.title(), 'Tudo pronto para começar')
-  await view.click('Criar conta')
-  assert.equal(count('registerUser'), 2)
-  assert.equal(count('complete'), 1)
+  assert.equal(view.title(), 'Confirme seu e-mail')
+  assert.match(view.text(), /Não foi possível confirmar a solicitação/)
+  assert.equal(count('registerUser'), 1)
+  assert.equal(count('complete'), 0)
 })
 
 test('@ ocupado ao concluir o perfil: volta à etapa 1 sem criar outra conta', async () => {
@@ -528,9 +535,6 @@ test('confirmação por código: OTP, reenvio com espera e conclusão do perfil'
   const view = await mount()
   await reachFinal(view)
   await view.click('Criar conta')
-  assert.equal(view.title(), 'Continue com seu e-mail')
-  assert.match(view.text(), /Não foi possível confirmar a criação/)
-  await view.click('Tenho um código')
   assert.equal(view.title(), 'Confirme seu e-mail')
   assert.doesNotMatch(view.text(), /[Ee]nviamos|[Jj]á está cadastrado/)
   assert.equal(view.button('Reenviar código (60s)').props.disabled, true)
@@ -541,7 +545,7 @@ test('confirmação por código: OTP, reenvio com espera e conclusão do perfil'
   assert.deepEqual(calls.find((c) => c[0] === 'confirm').slice(1), [
     'maria@exemplo.com',
     '123456',
-    'senha123',
+    'senhaSegura12345',
   ])
   assert.equal(count('complete'), 1)
   assert.equal(count('registerUser'), 1)
@@ -563,7 +567,6 @@ test('dois envios imediatos do mesmo OTP fazem uma verificação e uma conclusã
   const view = await mount()
   await reachFinal(view)
   await view.click('Criar conta')
-  await view.click('Tenho um código')
   const otp = view.root().findByProps({ autoComplete: 'one-time-code' })
   await act(async () => otp.props.onChange({ target: { value: '123456' } }))
   await act(async () => {
@@ -578,7 +581,7 @@ test('dois envios imediatos do mesmo OTP fazem uma verificação e uma conclusã
 })
 
 test('usuário já autenticado que abre /cadastro vai para o app', async () => {
-  globalThis.__reg.auth = { user: { uid: 'x' }, loading: false, refreshProfile() {} }
+  globalThis.__reg.auth = { user: { uid: 'x' }, loading: false, serverAccessAllowed: true, refreshProfile() {} }
   const view = await mount()
   assert.equal(view.root().findByProps({ 'data-navigate': '/app' }).props['data-navigate'], '/app')
 })
@@ -655,4 +658,47 @@ test('menor de 16 anos é recusado na etapa 2, antes de qualquer criação de id
   assert.equal(view.title(), 'Conte um pouco sobre você')
   assert.equal(count('registerUser'), 0)
   assert.equal(count('available'), 1, 'só a checagem do @ da etapa 1 foi feita')
+})
+
+test('e-mail primeiro: OTP, senha posterior, onboarding único e login explícito', async () => {
+  globalThis.__reg.api.ready = () => Promise.resolve(true)
+  const view = await mount()
+  assert.equal(view.fields.password(), undefined)
+  await reachFinal(view)
+  await view.click('Criar conta')
+  assert.equal(view.title(), 'Confirme seu e-mail')
+  assert.equal(count('requestEmailFirst'), 1)
+  assert.equal(count('registerUser'), 0)
+  const otp = view.root().findByProps({ autoComplete: 'one-time-code' })
+  await act(async () => otp.props.onChange({ target: { value: '001234' } }))
+  await view.submit()
+  assert.deepEqual(calls.find((call) => call[0] === 'confirmEmailFirst').slice(1), [
+    'maria@exemplo.com', '001234',
+  ])
+  assert.equal(view.title(), 'Defina sua senha')
+  const passwordInputs = view.root().findAllByType('input').filter((input) => input.props.autoComplete === 'new-password')
+  assert.equal(passwordInputs.length, 2)
+  await act(async () => passwordInputs[0].props.onChange({ target: { value: 'senhaNovaSegura12345' } }))
+  await act(async () => passwordInputs[1].props.onChange({ target: { value: 'senhaNovaSegura12345' } }))
+  await view.click('Concluir cadastro')
+  assert.equal(count('syncEmailFirst'), 1)
+  assert.equal(count('completeEmailFirst'), 1)
+  assert.equal(count('logout'), 1)
+  assert.deepEqual(calls.find((call) => call[0] === 'navigate').slice(1), [
+    '/login', { replace: true, state: { email: 'maria@exemplo.com', registrationComplete: true } },
+  ])
+})
+
+test('e-mail primeiro: código de conta existente não altera senha nem perfil', async () => {
+  globalThis.__reg.api.ready = () => Promise.resolve(true)
+  globalThis.__reg.api.confirmEmailFirst = () => Promise.resolve({ outcome: 'existing_account' })
+  const view = await mount()
+  await reachFinal(view)
+  await view.click('Criar conta')
+  const otp = view.root().findByProps({ autoComplete: 'one-time-code' })
+  await act(async () => otp.props.onChange({ target: { value: '123456' } }))
+  await view.submit()
+  assert.equal(view.title(), 'Continue com seu e-mail')
+  assert.equal(count('syncEmailFirst'), 0)
+  assert.equal(count('completeEmailFirst'), 0)
 })

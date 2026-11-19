@@ -18,7 +18,10 @@ insert into public.exercises(id,user_id,name,muscle_group,source,provider,provid
 ('e8d00000-0000-0000-0000-000000000002','e8a00000-0000-0000-0000-000000000002','Supino','Peito','catalog','evolutus_dataset','partial-strength','strength');
 
 select pg_temp.set_test_user('e8a00000-0000-0000-0000-000000000001',true);
-select set_config('request.jwt.claims',jsonb_build_object('sub','e8a00000-0000-0000-0000-000000000001','session_id','e8b00000-0000-0000-0000-000000000001')::text,true);
+-- set_test_user (linha anterior) já dá amr/role corretos; esta chamada só troca o
+-- session_id para apontar à sessão manual criada acima -- precisa preservar role/amr, não
+-- substituir o objeto inteiro, senão is_full_login_session() volta a negar.
+select set_config('request.jwt.claims',(current_setting('request.jwt.claims')::jsonb || jsonb_build_object('sub','e8a00000-0000-0000-0000-000000000001','session_id','e8b00000-0000-0000-0000-000000000001'))::text,true);
 set local role authenticated;
 
 select lives_ok($q$insert into public.workouts(id,user_id,exercise_id,date,sets,set_details,exercise_completed)
@@ -64,7 +67,7 @@ select is((select count(*)::int from public.workouts where id='e8f00000-0000-000
 reset role;
 
 select pg_temp.set_test_user('e8a00000-0000-0000-0000-000000000002',true);
-select set_config('request.jwt.claims',jsonb_build_object('sub','e8a00000-0000-0000-0000-000000000002','session_id','e8b00000-0000-0000-0000-000000000002')::text,true);
+select set_config('request.jwt.claims',(current_setting('request.jwt.claims')::jsonb || jsonb_build_object('sub','e8a00000-0000-0000-0000-000000000002','session_id','e8b00000-0000-0000-0000-000000000002'))::text,true);
 set local role authenticated;
 select is((select count(*)::int from public.workouts where id='e8f00000-0000-0000-0000-000000000002'),0,'RLS oculta a conclusão da outra conta');
 select lives_ok($q$update public.workouts set exercise_completed=false

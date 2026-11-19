@@ -11,18 +11,22 @@ import { STATUS_TEXT_MAX_LENGTH } from './statusLimits.js'
 const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/
 export const SEXO_OPTIONS = ['masculino', 'feminino', 'nao_informar']
 const MAX_PLAUSIBLE_AGE = 120
-export const PASSWORD_MIN_LENGTH = 8
+export const PASSWORD_MIN_LENGTH = 15
+export const PASSWORD_MAX_BYTES = 72
 
-// Espelha a política do servidor (supabase/config.toml: minimum_password_length = 8,
-// password_requirements = "letters_digits") -- validar aqui só adianta o feedback; o
+export function passwordByteLength(password) {
+  return new TextEncoder().encode(typeof password === 'string' ? password : '').length
+}
+
+// Espelha a política proposta no config.toml para novas senhas; o
 // GoTrue é sempre a autoridade final.
 export function validatePassword(password) {
   const errors = {}
-  const value = password || ''
-  if (value.length < PASSWORD_MIN_LENGTH) {
+  const value = typeof password === 'string' ? password : ''
+  if (Array.from(value).length < PASSWORD_MIN_LENGTH) {
     errors.password = `A senha deve ter pelo menos ${PASSWORD_MIN_LENGTH} caracteres`
-  } else if (!/[A-Za-z]/.test(value) || !/\d/.test(value)) {
-    errors.password = 'A senha deve ter letras e números'
+  } else if (passwordByteLength(value) > PASSWORD_MAX_BYTES) {
+    errors.password = `A senha deve ter no máximo ${PASSWORD_MAX_BYTES} bytes. Caracteres acentuados podem ocupar mais de um byte.`
   }
   return errors
 }

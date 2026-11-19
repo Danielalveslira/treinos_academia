@@ -32,6 +32,7 @@ import {
   filterApprovalItems,
 } from '../utils/approvalsQueue'
 import StorefrontImage from './StorefrontImage'
+import { MarkdownViewer } from './MarkdownViewer'
 
 const STATUS_FILTERS = [
   { key: 'pending', label: 'Pendentes' },
@@ -367,7 +368,7 @@ export default function ApprovalsQueue() {
             </Text>
             {reviewing.type === 'ad' && (
               <>
-                <Text as="p">{reviewing.raw.description}</Text>
+                <MarkdownViewer value={reviewing.raw.description} profile="ads" />
                 {reviewing.raw.media_id && (
                   <StorefrontImage id={reviewing.raw.media_id} size={160} />
                 )}

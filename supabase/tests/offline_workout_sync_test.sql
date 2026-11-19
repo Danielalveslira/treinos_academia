@@ -47,7 +47,7 @@ begin
   perform set_config(
     'request.jwt.claims',
     case when p_uid is null or p_uid = '' then '{}'
-      else jsonb_build_object('sub', p_uid, 'session_id', p_session)::text
+      else (current_setting('request.jwt.claims')::jsonb || jsonb_build_object('session_id', p_session))::text
     end,
     true
   );

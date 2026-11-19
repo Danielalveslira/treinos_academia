@@ -44,6 +44,13 @@ before(async () => {
             path: 'hcaptcha',
             namespace: 'stub',
           }))
+          context.onResolve({ filter: /\/utils\/authAnalytics$/ }, () => ({
+            path: 'analytics',
+            namespace: 'stub',
+          }))
+          context.onLoad({ filter: /^analytics$/, namespace: 'stub' }, () => ({
+            contents: `export const trackAuthEvent = (name) => { globalThis.__trackedAuthEvents ??= []; globalThis.__trackedAuthEvents.push(name) }`,
+          }))
           context.onLoad({ filter: /^primer$/, namespace: 'stub' }, () => ({
             loader: 'jsx',
             contents: `export const useTheme = () => ({resolvedColorMode:'day'});
@@ -73,6 +80,7 @@ test('token é consumido uma vez; expiração e erro permitem nova tentativa', a
   const ref = createRef()
   const verified = []
   globalThis.__captchaResets = 0
+  globalThis.__trackedAuthEvents = []
   let renderer
   await act(async () => {
     renderer = TestRenderer.create(
@@ -102,6 +110,9 @@ test('token é consumido uma vez; expiração e erro permitem nova tentativa', a
       .findAllByType('button')
       .some((button) => button.children.join('') === 'Tentar novamente')
   )
+  // Erro de carregamento/verificação é observável (P7); expiração (onExpire, acima) não é
+  // uma falha -- só onError conta como captcha_failed.
+  assert.deepEqual(globalThis.__trackedAuthEvents, ['captcha_failed'])
   await act(async () => renderer.root.findByType('button').props.onClick())
   assert.ok(verified.includes(true))
   assert.equal(verified.at(-1), false)
@@ -134,6 +145,7 @@ test('onReady evita o falso erro de carregamento quando o script já estava em w
 
 test('timeout de carregamento ainda marca erro quando o widget nunca fica pronto', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] })
+  globalThis.__trackedAuthEvents = []
   const ref = createRef()
   let renderer
   await act(async () => {
@@ -144,5 +156,6 @@ test('timeout de carregamento ainda marca erro quando o widget nunca fica pronto
     renderer.root.findByType('p').children.join(''),
     'Não foi possível carregar a verificação. Verifique sua conexão e tente novamente.'
   )
+  assert.deepEqual(globalThis.__trackedAuthEvents, ['captcha_failed'])
   await act(async () => renderer.unmount())
 })

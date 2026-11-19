@@ -6,6 +6,7 @@ import { LegalGate } from './LegalGate'
 import { ProfileCompletionGate } from './ProfileCompletionGate'
 import { AccountBlockedGate } from './AccountBlockedGate'
 import { AccountDeletionBlockedGate } from './AccountDeletionBlockedGate'
+import { RestrictedSessionGate } from './RestrictedSessionGate'
 import { resolveAccountBlockState, resolveLegalGateState } from '../utils/legal'
 
 export function ProtectedRoute({ children }) {
@@ -20,6 +21,7 @@ export function ProtectedRoute({ children }) {
     serverAccessAllowed,
     legalAccess,
     offlineLocal,
+    restrictedScope,
   } = useAuth()
 
   // Enquanto o AuthContext confirma se um permission-denied significa conta excluída
@@ -48,6 +50,9 @@ export function ProtectedRoute({ children }) {
         }
       />
     )
+  if (restrictedScope) {
+    return <RestrictedSessionGate scope={restrictedScope} email={user.email} />
+  }
   // Checado antes do erro genérico de perfil abaixo: uma exclusão bloqueada para revisão
   // financeira NEGA a leitura do próprio perfil (mesma trava de deletionJobs/account_{uid}
   // que uma exclusão em andamento), então profileError/!profile também seriam verdadeiros

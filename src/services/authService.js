@@ -2,21 +2,100 @@ import { supabase } from '../supabase/config'
 import { disableOfflineAccess } from './offline/bootstrap'
 import { isOfflineColdStartEnabled } from './offline/database'
 import { captchaOptions } from '../utils/authCaptcha'
+import { isNetworkError } from '../utils/registrationErrors'
 
 export async function registerUser(email, password, captchaToken) {
   const options = captchaOptions(captchaToken)
-  const { data, error } = await supabase.auth.signUp({ email, password, ...(options && { options }) })
+  let data
+  let error
+  try {
+    ;({ data, error } = await supabase.auth.signUp({ email, password, ...(options && { options }) }))
+  } catch (failure) {
+    if (isNetworkError(failure)) return { user: null, hasSession: false, outcome: 'request_uncertain' }
+    throw failure
+  }
   // Apenas um erro explícito permite identificar duplicidade. Uma resposta sem sessão
   // pode ser um cadastro pendente ou uma resposta ofuscada; não inspecione identities.
   if (error?.code === 'user_already_exists' || error?.code === 'email_exists') {
-    return { user: null, hasSession: false, outcome: 'duplicate' }
+    return { user: null, hasSession: false, outcome: 'verification_required' }
   }
+  if (isNetworkError(error)) return { user: null, hasSession: false, outcome: 'request_uncertain' }
   if (error) throw error
-  if (!data?.user) throw new Error('SIGNUP_RESPONSE_INCOMPLETE')
+  if (!data?.user) return { user: null, hasSession: false, outcome: 'request_uncertain' }
+  if (data.session) {
+    // Confirmação obrigatória não deveria emitir uma sessão no signUp. Não a
+    // promovemos para o app nem usamos seu UID para criar perfil.
+    try {
+      await signOutLocal()
+    } catch {
+      const failure = new Error('SIGNUP_UNEXPECTED_SESSION')
+      failure.code = 'SIGNUP_UNEXPECTED_SESSION'
+      throw failure
+    }
+    return { user: null, hasSession: false, outcome: 'unexpected_session' }
+  }
   return {
-    user: data.session ? { uid: data.user.id, email: data.user.email } : null,
-    hasSession: Boolean(data.session),
-    outcome: data.session ? 'authenticated' : 'ambiguous',
+    user: null,
+    hasSession: false,
+    outcome: 'verification_required',
+  }
+}
+
+export async function emailFirstSignupReady() {
+  const { data, error } = await supabase.rpc('auth_email_first_ready')
+  // Allows the P0 client to be deployed before the additive rollout migration.
+  if (error?.code === 'PGRST202' || error?.code === '42883') return false
+  if (error) throw error
+  return data === true
+}
+
+export async function requestEmailFirstSignup(email, captchaToken) {
+  const options = captchaOptions(captchaToken)
+  try {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: true, ...(options || {}) },
+    })
+    if (isNetworkError(error)) return 'request_uncertain'
+    if (error) throw error
+    return 'verification_required'
+  } catch (failure) {
+    if (isNetworkError(failure)) return 'request_uncertain'
+    throw failure
+  }
+}
+
+function roleFromAccessToken(token) {
+  try {
+    const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    return JSON.parse(atob(payload)).role
+  } catch {
+    return null
+  }
+}
+
+export async function confirmEmailFirstOtp(email, token) {
+  const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
+  if (error) throw error
+  const role = roleFromAccessToken(data?.session?.access_token || '')
+  if (role === 'auth_signup' && data?.user?.id) return { outcome: 'signup', uid: data.user.id }
+  // A mesma API de OTP pode autenticar uma conta existente. Nunca usamos esta
+  // sessão de recuperação como autorização para alterar o cadastro da conta.
+  await logoutUser()
+  if (role === 'auth_recovery') return { outcome: 'existing_account' }
+  const failure = new Error('AUTH_SCOPE_UNAVAILABLE')
+  failure.code = 'AUTH_SCOPE_UNAVAILABLE'
+  throw failure
+}
+
+export async function syncEmailFirstPassword(password) {
+  const { data, error } = await supabase.functions.invoke('signup-password-sync', {
+    body: { password },
+  })
+  if (error || data?.code !== 'PASSWORD_READY') {
+    const failure = new Error('PASSWORD_SYNC_FAILED')
+    failure.code = 'PASSWORD_SYNC_FAILED'
+    throw failure
   }
 }
 
@@ -28,14 +107,6 @@ export async function confirmSignupOtp(email, token) {
   const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'signup' })
   if (error) throw error
   return { uid: data.user.id, email: data.user.email }
-}
-
-// Sem equivalente exato do %DISPLAY_NAME% do template do Firebase (o template de
-// e-mail do Supabase não tem essa variável) — mantido só para não quebrar a chamada em
-// Register.jsx, gravando em user_metadata (não afeta nada mais no app hoje).
-export async function setDisplayName(_user, displayName) {
-  const { error } = await supabase.auth.updateUser({ data: { display_name: displayName } })
-  if (error) throw error
 }
 
 // Reenvia o código de confirmação de cadastro. Usada tanto na etapa "digite o código"
@@ -210,8 +281,7 @@ export async function updatePassword(password) {
 // vítima então se cadastrar normalmente com o MESMO e-mail (sem saber que já existe uma
 // tentativa pendente), o GoTrue confirma a conta da vítima mas MANTÉM a senha do atacante --
 // um segundo signUp para um e-mail ainda não confirmado nunca atualiza a senha, só reenvia o
-// código. LANÇA em caso de falha (ao contrário de endOtherSessions/logoutUser best-effort
-// deste arquivo): o chamador DEVE falhar de forma fechada, nunca conceder acesso sem
+// código. LANÇA em caso de falha: o chamador DEVE falhar de forma fechada, nunca conceder acesso sem
 // confirmar que a senha da conta é a que esta pessoa digitou agora (ver
 // confirmSignupAndSyncPassword). Testado também com secure_password_change=true: a sessão
 // recém-criada pelo verifyOtp já conta como "logado recentemente", sem bloqueio extra.
@@ -249,25 +319,7 @@ export async function confirmSignupAndSyncPassword(email, token, password) {
   return confirmed
 }
 
-// Usada por ConfirmEmail.jsx: ali não há NENHUMA senha conhecida (quem confirma pode ser a
-// vítima do mesmo cenário de hijacking acima, chegando por um caminho sem o formulário de
-// cadastro em memória). Por isso exige definir uma senha nova antes de qualquer acesso --
-// nunca reaproveita o que já estava na conta. endOtherSessions é best-effort (revoga sessões
-// de quem tiver cadastrado a conta antes, inclusive um possível atacante já logado);
-// logoutUser também não bloqueia o retorno -- o objetivo é sempre exigir um login explícito
-// com a senha nova a seguir, mas uma falha ao encerrar ESTA sessão não deve impedir a pessoa
-// de saber que a senha já foi trocada com sucesso.
-export async function setPasswordAfterConfirmation(password) {
-  await updatePassword(password)
-  await endOtherSessions()
-  await logoutUser().catch(() => {})
-}
-
-// Chamado depois de uma redefinição de senha bem-sucedida: revoga qualquer sessão que
-// alguém mais possa ter aberto com a senha antiga, sem encerrar esta (a sessão criada
-// agora pela própria recuperação). Best-effort de propósito -- diferente de
-// logoutAllDevices, uma falha aqui não desfaz a troca de senha, que já aconteceu.
-export async function endOtherSessions() {
+export async function revokeOtherSessionsRequired() {
   const { error } = await supabase.auth.signOut({ scope: 'others' })
-  if (error) console.warn('[Auth] endOtherSessions:', error)
+  if (error) throw error
 }

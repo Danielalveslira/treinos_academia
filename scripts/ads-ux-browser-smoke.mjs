@@ -60,6 +60,18 @@ async function getAdvertisingCampaigns(accountId, after = null) {
   track('get_advertising_campaigns', { accountId, after })
   return [...store.values()].sort((a, b) => (a.ad_id < b.ad_id ? 1 : -1)).map((row) => ({ ...row }))
 }
+// Mesmo formato de public.advertising_campaigns_summary (jsonb_build_object com total/live/
+// submitted) -- ver 20261222000012_advertising_campaigns_status_filter.sql. AdvertisingCentral
+// só lê esses três campos (linha "Total: ... Ativos: ... Em análise: ...").
+async function getAdvertisingCampaignsSummary(accountId) {
+  track('advertising_campaigns_summary', { accountId })
+  const rows = [...store.values()]
+  return {
+    total: rows.length,
+    live: rows.filter((r) => r.delivery_state === 'active').length,
+    submitted: rows.filter((r) => r.moderation_state !== 'approved' && r.state === 'submitted').length,
+  }
+}
 async function getAdvertisingSalesStatus() {
   track('advertising_sales_status', {})
   return [
@@ -161,7 +173,7 @@ await build({
         b.onLoad({ filter: /.*/, namespace: 'fixture-ads' }, () => ({
           contents:
             shared +
-            '\nexport { createAdvertisingAccount, getAdvertisingCampaigns, getAdvertisingSalesStatus, createAdvertisingCampaign, editAdvertisingCampaign, interruptAdvertisingCampaign, confirmAdvertisingPauseLimit, resumeMyAdvertisingCampaign, archiveAdvertisingCampaign, getAdvertisingRevisions, getAdvertisingOrders, getCommunityAdvertisingPermissions, configureCommunityAdvertising }',
+            '\nexport { createAdvertisingAccount, getAdvertisingCampaigns, getAdvertisingCampaignsSummary, getAdvertisingSalesStatus, createAdvertisingCampaign, editAdvertisingCampaign, interruptAdvertisingCampaign, confirmAdvertisingPauseLimit, resumeMyAdvertisingCampaign, archiveAdvertisingCampaign, getAdvertisingRevisions, getAdvertisingOrders, getCommunityAdvertisingPermissions, configureCommunityAdvertising }',
           loader: 'js',
         }))
         b.onLoad({ filter: /.*/, namespace: 'fixture-communities' }, () => ({
@@ -226,7 +238,7 @@ try {
         'Precisa de correção',
         'Arquivado',
       ])
-        await page.getByText(label, { exact: true }).first().waitFor()
+        await page.locator('[data-testid^="ad-"]').getByText(label, { exact: true }).first().waitFor()
       assert.equal(await page.getByText(/home_banner|moderation_state|AD_[A-Z_]+/).count(), 0)
 
       // Sales disabled never shows a misleading contracting CTA (review item 5): exactly
@@ -284,14 +296,15 @@ try {
     const page = await context.newPage()
     await page.goto(origin + '/')
     const card = page.getByTestId('ad-ad-stale')
-    await card.getByRole('button', { name: 'Pausar anúncio', exact: true }).click()
+    await card.getByRole('button', { name: 'Gerenciar', exact: true }).click()
+    await page.getByRole('button', { name: 'Pausar anúncio', exact: true }).click()
     await page.evaluate(() => { const row = window.__adsStore.get('ad-stale'); row.pauses_available = 0; row.pauses_used = 3; row.pause_operation_id = 18 })
     await page.getByRole('button', { name: 'Pausar anúncio', exact: true }).last().click()
-    await card.getByText('A situação deste anúncio mudou enquanto a tela estava aberta. Atualize antes de pausar.', { exact: true }).waitFor()
+    await page.getByText('A situação deste anúncio mudou enquanto a tela estava aberta. Atualize antes de pausar.', { exact: true }).first().waitFor()
     await page.getByText('Limite de pausas atingido', { exact: true }).waitFor()
-    assert.equal(await card.getByText('Suspenso pelo Evolutus', { exact: true }).count(), 0)
+    assert.equal(await page.getByText('Suspenso pelo Evolutus', { exact: true }).count(), 0)
     await page.getByRole('button', { name: 'Confirmar suspensão', exact: true }).click()
-    await card.getByText('Suspenso pelo Evolutus', { exact: true }).waitFor()
+    await page.getByText('Suspenso pelo Evolutus', { exact: true }).waitFor()
     results.push({ staleCounterRequiresFreshConfirmation: true, passed: true })
     await context.close()
   }
@@ -303,7 +316,8 @@ try {
     const page = await context.newPage()
     await page.goto(origin + '/')
     const card = page.getByTestId('ad-ad-limit')
-    await card.getByRole('button', { name: 'Pausar anúncio', exact: true }).click()
+    await card.getByRole('button', { name: 'Gerenciar', exact: true }).click()
+    await page.getByRole('button', { name: 'Pausar anúncio', exact: true }).click()
     await page.getByText('Limite de pausas atingido', { exact: true }).waitFor()
     await page.getByRole('button', { name: 'Cancelar', exact: true }).click()
     assert.equal(
@@ -311,12 +325,12 @@ try {
       0
     )
     assert.equal(await page.evaluate(() => window.__adsCalls.filter((c) => c.name === 'confirm_advertising_pause_limit').length), 0)
-    await card.getByRole('button', { name: 'Pausar anúncio', exact: true }).click()
+    await page.getByRole('button', { name: 'Pausar anúncio', exact: true }).click()
     await page.getByRole('button', { name: 'Confirmar suspensão', exact: true }).click()
-    await card.getByText('Suspenso pelo Evolutus', { exact: true }).waitFor()
+    await page.getByText('Suspenso pelo Evolutus', { exact: true }).waitFor()
     assert.equal(await page.evaluate(() => window.__adsCalls.filter((c) => c.name === 'interrupt_advertising_campaign').length), 0)
     assert.equal(await page.evaluate(() => window.__adsCalls.filter((c) => c.name === 'confirm_advertising_pause_limit').length), 1)
-    const support = card.getByRole('link', { name: 'Solicitar liberação' })
+    const support = page.getByRole('link', { name: 'Solicitar liberação' })
     assert.equal(await support.getAttribute('href'), '/atendimento?tipo=appeal')
     results.push({ fourthPauseConfirmation: true, cancelDoesNotSuspend: true, passed: true })
     await context.close()

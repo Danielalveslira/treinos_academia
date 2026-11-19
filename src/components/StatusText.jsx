@@ -42,7 +42,7 @@ function LongTextPlaceholder({ text, sx }) {
   )
 }
 
-function DeferredStatusText({ content, value, sx }) {
+function DeferredStatusText({ content, value, sx, profile }) {
   const [ref, near] = useInView({ rootMargin: '700px 0px' })
   // Só o começo (até uma fronteira segura) é processado de cara; o texto completo, se a pessoa pedir "Ver mais".
   const { preview, truncated } = previewMarkdown(content)
@@ -55,14 +55,14 @@ function DeferredStatusText({ content, value, sx }) {
             truncated
               ? () => (
                   <Suspense fallback={placeholder}>
-                    <MarkdownViewer value={value} sx={sx} />
+                    <MarkdownViewer value={value} sx={sx} profile={profile} />
                   </Suspense>
                 )
               : null
           }
         >
           <Suspense fallback={placeholder}>
-            <MarkdownViewer value={truncated ? preview : value} sx={sx} />
+            <MarkdownViewer value={truncated ? preview : value} sx={sx} profile={profile} />
           </Suspense>
         </ExpandableContent>
       ) : (
@@ -72,16 +72,19 @@ function DeferredStatusText({ content, value, sx }) {
   )
 }
 
-export function StatusText({ value, sx }) {
+// `profile` passa direto para MarkdownViewer (ver MarkdownViewer.jsx) -- 'ads' remove
+// link/imagem/tabela para o conteúdo de anúncios, reaproveitando aqui o mesmo carregamento
+// sob demanda do chunk de markdown que o feed de publicações já usa.
+export function StatusText({ value, sx, profile = 'default' }) {
   const content = typeof value === 'string' ? value.replace(/\r\n/g, '\n') : ''
   if (!content.trim()) return null
   if (!needsMarkdown(content)) return <PlainText text={content.trim()} sx={sx} />
   if (content.length >= DEFER_MIN_LENGTH) {
-    return <DeferredStatusText content={content} value={value} sx={sx} />
+    return <DeferredStatusText content={content} value={value} sx={sx} profile={profile} />
   }
   const rendered = (
     <Suspense fallback={<PlainText text={content.trim()} sx={sx} />}>
-      <MarkdownViewer value={value} sx={sx} />
+      <MarkdownViewer value={value} sx={sx} profile={profile} />
     </Suspense>
   )
   return content.length >= EXPANDABLE_MIN_LENGTH ? (

@@ -4,8 +4,14 @@
 # customizadas). Todos os serviços compartilham a rede do container do banco (`--network container:hdb`).
 #
 #   scripts/homolog/local-stack.sh up      # sobe (gateway em http://127.0.0.1:54321) e aplica as migrations
-#   scripts/homolog/local-stack.sh down    # remove containers (as imagens ficam; `docker rmi` para liberar disco)
+#   scripts/homolog/local-stack.sh down    # remove containers e a rede (as imagens ficam; `docker rmi` para liberar disco)
 #   scripts/homolog/local-stack.sh keys    # imprime {"anon","service"} (JWTs locais, nunca reutilizáveis fora daqui)
+#
+# Isolamento de produção (obrigatório, não desative): algumas migrations do repositório agendam
+# `pg_cron` -> `net.http_post` contra a URL real do projeto hospedado (workers de exclusão/push/e-mail).
+# Esta stack roda numa rede Docker `--internal` (sem rota para a internet) e desativa o
+# launcher do cron ANTES de iniciar Auth/Storage ou aplicar migrations. As definições dos
+# jobs permanecem para os testes SQL; nenhum job é executado automaticamente.
 #
 # Depois de `up`: crie usuários em POST /auth/v1/signup, promova o superadmin com
 #   update public.users set role='superadmin' where id=...   (docker exec -i hdb psql -U supabase_admin -d postgres)
@@ -17,18 +23,29 @@ cd "$(dirname "$0")/../.."
 HERE=scripts/homolog
 SECRET='super-secret-jwt-token-with-at-least-32-characters-long'
 IMG=public.ecr.aws/supabase
+NET=homolog-isolated
 N="--network container:hdb"
 keys() { node $HERE/keys.mjs print; }
 
 case "${1:-}" in
   keys) keys ;;
-  down) docker rm -f hfn hkong hrest hstorage hauth hdb >/dev/null 2>&1 || true; echo "stack removida" ;;
+  down)
+    docker rm -f hfn hkong hrest hstorage hauth hdb >/dev/null 2>&1 || true
+    docker network rm $NET >/dev/null 2>&1 || true
+    echo "stack removida" ;;
   up)
     ANON=$(keys | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).anon")
     SERVICE=$(keys | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).service")
     docker rm -f hfn hkong hrest hstorage hauth hdb >/dev/null 2>&1 || true
-    docker run -d --name hdb -p 54321:8000 -e POSTGRES_PASSWORD=postgres $IMG/postgres:17.6.1.166 >/dev/null
+    docker network rm $NET >/dev/null 2>&1 || true
+    # Rede sem rota de saída: nenhum container desta stack alcança produção, nem por engano.
+    docker network create --internal $NET >/dev/null
+    # 9991 fica reservado (sem uso aqui) para scripts/homolog/auth-hook-stack.sh: containers extras
+    # entram via `--network container:hdb` (mesmo netns, resolvido por 127.0.0.1) e só ficam
+    # alcançáveis do host através de uma porta publicada neste container, não na sua própria.
+    docker run -d --name hdb --network $NET -p 54321:8000 -p 9991:9991 -e POSTGRES_PASSWORD=postgres $IMG/postgres:17.6.1.166 >/dev/null
     for _ in $(seq 1 40); do docker exec hdb pg_isready -U supabase_admin -h 127.0.0.1 >/dev/null 2>&1 && break; sleep 2; done; sleep 5
+    docker exec hdb psql -U supabase_admin -d postgres -X -q -v ON_ERROR_STOP=1 -c "alter system set cron.launch_active_jobs = off" -c "select pg_reload_conf()" >/dev/null
     docker run -d --name hauth $N -e GOTRUE_API_HOST=0.0.0.0 -e GOTRUE_API_PORT=9999 -e API_EXTERNAL_URL=http://127.0.0.1:54321 \
       -e GOTRUE_DB_DRIVER=postgres -e GOTRUE_DB_DATABASE_URL=postgres://supabase_auth_admin:postgres@127.0.0.1:5432/postgres \
       -e GOTRUE_SITE_URL=http://127.0.0.1:3000 -e GOTRUE_JWT_SECRET=$SECRET -e GOTRUE_JWT_EXP=3600 -e GOTRUE_JWT_DEFAULT_GROUP_NAME=authenticated \
@@ -38,8 +55,16 @@ case "${1:-}" in
       -e DATABASE_URL=postgres://supabase_storage_admin:postgres@127.0.0.1:5432/postgres -e DB_INSTALL_ROLES=false -e FILE_SIZE_LIMIT=52428800 \
       -e STORAGE_BACKEND=file -e FILE_STORAGE_BACKEND_PATH=/var/lib/storage -e TENANT_ID=local -e REGION=local -e GLOBAL_S3_BUCKET=local \
       -e SERVER_PORT=5000 -e ENABLE_IMAGE_TRANSFORMATION=false $IMG/storage-api:v1.77.5 >/dev/null
-    sleep 12   # GoTrue e Storage criam seus schemas (auth/storage) antes das migrations do app
     P="docker exec -i hdb psql -U supabase_admin -d postgres -X -q -v ON_ERROR_STOP=1"
+    Q="docker exec hdb psql -U supabase_admin -d postgres -tAc"
+    # GoTrue e Storage criam seus schemas (auth/storage) antes das migrations do app; tempo varia
+    # por carga da máquina, então aguarda as duas tabelas existirem em vez de um sleep fixo.
+    for _ in $(seq 1 60); do
+      [ "$($Q "select 1 from information_schema.tables where table_schema='auth' and table_name='users'" 2>/dev/null)" = "1" ] \
+        && [ "$($Q "select 1 from information_schema.tables where table_schema='storage' and table_name='buckets'" 2>/dev/null)" = "1" ] \
+        && break
+      sleep 2
+    done
     $P -c "create extension if not exists pgtap with schema extensions; create extension if not exists pg_cron;"
     for f in supabase/migrations/*.sql; do $P < "$f" >/dev/null || { echo "FALHOU: $f"; exit 1; }; done
     docker run -d --name hrest $N -e PGRST_DB_URI=postgres://authenticator:postgres@127.0.0.1:5432/postgres -e PGRST_DB_SCHEMAS=public \

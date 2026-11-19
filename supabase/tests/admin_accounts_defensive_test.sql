@@ -71,12 +71,13 @@ create temp table t_account_status_before as
 select pg_temp.set_test_user('78000000-0000-0000-0000-000000000001',true);
 select pg_temp.revoke_test_session('78000000-0000-0000-0000-000000000001');
 select throws_ok($$select public.set_account_status('78000000-0000-0000-0000-000000000002',true,'fixture reason')$$,'SESSION_REVOKED','set_account_status nega sessão revogada mesmo sendo superadmin de verdade');
--- admin_set_accounts_status não é alvo da injeção automática (excluído por nome na
--- 20261114000001) e seu próprio gate (is_superadmin, sem checar sessão) passa; quem nega é
--- set_account_status DENTRO do loop -- capturado pelo "when others" do wrapper e mapeado para
--- ACTION_FAILED (SESSION_REVOKED não está na lista de códigos conhecidos), nunca um sucesso.
-select lives_ok($$select public.admin_set_accounts_status(array['78000000-0000-0000-0000-000000000002']::uuid[],true,'fixture reason')$$,'admin_set_accounts_status não propaga a excepção -- resultado por item');
-select is((public.admin_set_accounts_status(array['78000000-0000-0000-0000-000000000002']::uuid[],true,'fixture reason')->0->>'error'),'ACTION_FAILED','lote confirma SESSION_REVOKED mapeado para ACTION_FAILED, não um sucesso disfarçado');
+-- P1 (20261223000003) fortaleceu is_superadmin() para também exigir is_full_login_session() --
+-- admin_set_accounts_status agora nega na própria entrada ("if not is_superadmin() then raise
+-- PERMISSION_DENIED"), antes de entrar no loop por item. O comportamento antigo documentado
+-- aqui (gate de entrada "sem checar sessão", negação só dentro do loop via set_account_status)
+-- não se aplica mais a sessão revogada -- é um reforço de segurança, não uma regressão: a
+-- checagem acontece mais cedo, não deixa de acontecer.
+select throws_ok($$select public.admin_set_accounts_status(array['78000000-0000-0000-0000-000000000002']::uuid[],true,'fixture reason')$$,'PERMISSION_DENIED','admin_set_accounts_status nega sessão revogada na própria entrada, antes do loop por item');
 select throws_ok($$select public.admin_request_account_deletion('78000000-0000-0000-0000-000000000002','fixture reason')$$,'SESSION_REVOKED','admin_request_account_deletion nega sessão revogada');
 select is((select account_status from public.users where id='78000000-0000-0000-0000-000000000002'),(select account_status from t_account_status_before),'alvo não foi afetado pela tentativa com sessão revogada');
 -- Sessão de novo ativa (novo login): as mesmas chamadas voltam a funcionar, sem precisar de nenhum mecanismo extra.

@@ -10,8 +10,8 @@ import {
   ImageIcon,
 } from '@primer/octicons-react'
 
-// As 9 rotas administrativas reais (ver as rotas /admin/* em App.jsx, todas atrás de
-// SuperAdminRoute) -- única fonte para o dropdown "Administração" de AccountMenu.jsx e
+// As rotas administrativas reais (ver as rotas /admin/* em App.jsx) -- fonte
+// única para o dropdown "Administração" de AccountMenu.jsx e
 // para o AdminNav.jsx que cada página /admin/* renderiza no próprio cabeçalho. Vive num
 // módulo .js puro (sem hooks/Supabase) de propósito: AdminNav é importado por todas as
 // páginas /admin/*, e vários testes de página bundlam a página inteira via esbuild sem
@@ -19,6 +19,7 @@ import {
 // esses testes só para ler esta lista.
 export const ADMIN_ITEMS = [
   { key: 'admin-comunidades', to: '/admin/comunidades', icon: PeopleIcon, label: 'Comunidades' },
+  { key: 'admin-mfa', to: '/admin/mfa', icon: ShieldLockIcon, label: 'Autenticador' },
   {
     key: 'admin-parcerias',
     to: '/admin/parcerias',

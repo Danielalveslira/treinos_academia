@@ -4,6 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createRequire } from 'node:module'
+import { Buffer } from 'node:buffer'
 import { build } from 'esbuild'
 import 'fake-indexeddb/auto'
 import { IDBFactory } from 'fake-indexeddb'
@@ -302,6 +303,21 @@ test('login ONLINE confirma perfil+termos e grava o bootstrap MÍNIMO (cold star
       !JSON.stringify(record).includes('1990-01-01') &&
       !JSON.stringify(record).includes('@')
   )
+  view.unmount()
+})
+
+test('sessão de recuperação não carrega perfil, termos, Realtime nem cria bootstrap offline', async () => {
+  const token = `x.${Buffer.from(JSON.stringify({ role: 'auth_recovery' })).toString('base64url')}.x`
+  globalThis.__session = { user: supaUser(A), access_token: token, expires_at: 9e9 }
+  globalThis.__initialSession = globalThis.__session
+  const view = on.mount()
+  await waitFor(() => !on.auth().loading, 'sessão restrita não concluiu o carregamento')
+  assert.equal(on.auth().restrictedScope, 'auth_recovery')
+  assert.equal(on.auth().profile, null)
+  assert.equal(on.auth().serverAccessAllowed, false)
+  assert.ok(!world.calls.includes('ensure_user_profile'))
+  assert.ok(!world.calls.includes('has_app_access'))
+  assert.equal(await on.bootstrap.readActiveBootstrap(), null)
   view.unmount()
 })
 

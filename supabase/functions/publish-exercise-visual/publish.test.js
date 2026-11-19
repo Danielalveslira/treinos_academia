@@ -254,14 +254,25 @@ test('V2: transição inválida barrada pelo banco chega como 409 INVALID_TRANSI
 })
 
 // The shared administrative authenticator must fail closed before touching Storage or RPCs.
-test('sessão revogada ou consulta indisponível: 401 sem operações privilegiadas', async () => {
+test('sessão revogada ou consulta indisponível: acesso negado sem operações privilegiadas', async () => {
   for (const unavailable of [false, true]) {
     arrange()
     fake.sessionActive = unavailable ? true : false
     fake.fail.session = unavailable
     const result = await call()
-    assert.deepEqual([result.status, result.body.error], [401, 'SESSION_REVOKED'])
-    assert.deepEqual(fake.authRpcCalls, ['is_session_active'])
+    assert.deepEqual([result.status, result.body.error], [403, 'FORBIDDEN'])
+    assert.deepEqual(fake.authRpcCalls, ['is_superadmin'])
     assert.deepEqual([fake.rpcCalls.length, fake.downloads.length, fake.uploads.length, fake.removed.length], [0, 0, 0, 0])
+  }
+})
+
+test('escopo restrito e AAL insuficiente não alcançam Storage nem RPC interna', async () => {
+  for (const restricted of ['scope', 'aal']) {
+    arrange()
+    if (restricted === 'scope') fake.fullSession = false
+    else fake.mfaRequired = true
+    const result = await call()
+    assert.deepEqual([result.status, result.body.error], [403, 'FORBIDDEN'])
+    assert.deepEqual([fake.rpcCalls.length, fake.downloads.length, fake.uploads.length], [0, 0, 0])
   }
 })

@@ -337,13 +337,16 @@ test('validateSponsoredAd: ctaTarget is restricted to a safe scheme per ctaType'
   }
 })
 
-test('validatePassword: espelha a política do servidor (8+ caracteres, letras e números)', () => {
-  assert.equal(hasErrors(validatePassword('senha1234')), false)
-  assert.match(validatePassword('abc123').password, /8 caracteres/)
-  assert.match(validatePassword('12345678').password, /letras e números/)
-  assert.match(validatePassword('abcdefgh').password, /letras e números/)
-  assert.match(validatePassword('').password, /8 caracteres/)
-  assert.match(validatePassword(undefined).password, /8 caracteres/)
+test('validatePassword: exige 15 caracteres sem composição obrigatória', () => {
+  assert.equal(hasErrors(validatePassword('frase com espaços')), false)
+  assert.equal(hasErrors(validatePassword('abcdefghijklmnop')), false)
+  assert.equal(hasErrors(validatePassword('a'.repeat(64))), false)
+  assert.equal(hasErrors(validatePassword('a'.repeat(72))), false)
+  assert.match(validatePassword('a'.repeat(73)).password, /72 bytes/)
+  assert.match(validatePassword('á'.repeat(40)).password, /72 bytes/)
+  assert.match(validatePassword('abc123').password, /15 caracteres/)
+  assert.match(validatePassword('').password, /15 caracteres/)
+  assert.match(validatePassword(undefined).password, /15 caracteres/)
 })
 
 test('validatePartnerProduct: imageUrl é obrigatória quando requireImage=true (novo cadastro ou publicação)', () => {

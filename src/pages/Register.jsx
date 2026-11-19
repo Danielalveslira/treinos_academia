@@ -1,16 +1,22 @@
 import { AuthLayout } from '../components/PublicLayout'
 import { useEffect, useRef, useState } from 'react'
-import { Link as RouterLink, Navigate, useNavigate } from 'react-router-dom'
+import { Link as RouterLink, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { track } from '@vercel/analytics'
+import { trackAuthEvent, reportAuthOutcome } from '../utils/authAnalytics'
 import { Button, FormControl, TextInput, Select, Link, Flash, Stack } from '@primer/react'
 import { CheckCircleFillIcon, CircleIcon, EyeClosedIcon, EyeIcon } from '@primer/octicons-react'
 import {
   registerUser,
   confirmSignupAndSyncPassword,
   sendVerificationEmail,
+  emailFirstSignupReady,
+  requestEmailFirstSignup,
+  confirmEmailFirstOtp,
+  syncEmailFirstPassword,
+  logoutUser,
 } from '../services/authService'
 import { isUsernameAvailable } from '../services/usersService'
-import { completeUserProfile } from '../services/profileCompletion'
+import { completeUserProfile, completeEmailFirstOnboarding } from '../services/profileCompletion'
 import { loadMunicipalityCatalog } from '../services/municipalityCatalog'
 import { useAuth } from '../hooks/useAuth'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
@@ -23,6 +29,7 @@ import {
   validateSexo,
   validateUsageProfile,
   validatePassword,
+  validatePasswordConfirmation,
   validateResidenceMunicipality,
   hasErrors,
   PASSWORD_MIN_LENGTH,
@@ -34,6 +41,7 @@ import { AuthCaptcha } from '../components/AuthCaptcha'
 import { authCaptchaRequired, takeCaptchaToken } from '../utils/authCaptcha'
 import { SignupProgress } from '../components/SignupProgress'
 import { LegalConsent } from '../components/LegalConsent'
+import { NewPasswordFields } from '../components/NewPasswordFields'
 import { canSubmitLegalRegistration } from '../utils/legal'
 import { registrationMinimumAge } from '../constants/accountAge'
 import { businessDayKey } from '../utils/businessDate'
@@ -82,11 +90,12 @@ function firstStepWithError(errors) {
 
 export default function Register() {
   const navigate = useNavigate()
-  const { user, loading: authLoading, refreshProfile } = useAuth()
+  const location = useLocation()
+  const { user, loading: authLoading, serverAccessAllowed, refreshProfile } = useAuth()
   const online = useOnlineStatus()
   const [values, setValues] = useState({
     username: '',
-    email: '',
+    email: typeof location.state?.email === 'string' ? location.state.email : '',
     password: '',
     birthDate: '',
     // Código IBGE escolhido no CitySelector (null = nenhuma seleção válida; texto livre nunca vira valor).
@@ -99,6 +108,9 @@ export default function Register() {
   const { username, email, password, birthDate, cityCode, sexo, usageProfile } = values
   const [formStep, setFormStep] = useState(1)
   const [showPassword, setShowPassword] = useState(false)
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordErrors, setPasswordErrors] = useState({})
+  const [emailFirstReady, setEmailFirstReady] = useState(null)
   const [fieldErrors, setFieldErrors] = useState({})
   // Disponibilidade do @ (cache do último valor checado): checada ao sair do campo e ao continuar,
   // nunca a cada tecla, e nunca duas vezes para o mesmo valor.
@@ -108,6 +120,7 @@ export default function Register() {
   const continueInFlight = useRef(false)
   // Trava síncrona contra envio duplo (duplo toque/Enter repetido antes do re-render de `submitting`).
   const inFlight = useRef(false)
+  const onboardingFinished = useRef(false)
   // Marcado ANTES do signUp: a partir daí a sessão que aparecer é a desta página, não uma conta que
   // já estava logada -- ver o redirecionamento de usuários autenticados abaixo.
   const signupStarted = useRef(false)
@@ -125,8 +138,7 @@ export default function Register() {
   const [legalBundle, setLegalBundle] = useState(null)
   const [legalLoading, setLegalLoading] = useState(true)
   const [legalError, setLegalError] = useState('')
-  // 'form': formulário; 'outcome': resposta sem sessão, sem prova de envio;
-  // 'confirm': código informado pela pessoa; 'locked': código certo, mas não foi possível confirmar que a senha
+  // 'form': formulário; 'confirm': código informado pela pessoa; 'locked': código certo, mas não foi possível confirmar que a senha
   // da conta é a que está neste formulário (ver confirmSignupAndSyncPassword) -- nunca
   // concede acesso nesse estado. Os dados do formulário continuam em memória nos estados
   // acima.
@@ -147,6 +159,14 @@ export default function Register() {
     return () => {
       mounted.current = false
     }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    emailFirstSignupReady()
+      .then((ready) => { if (active) setEmailFirstReady(ready) })
+      .catch(() => { if (active) setStep('unavailable') })
+    return () => { active = false }
   }, [])
 
   // O catálogo de cidades (chunk próprio, só desta página) começa a baixar já na etapa 1, para estar
@@ -251,7 +271,7 @@ export default function Register() {
       return {
         ...validateUsername(username),
         ...(createdAccount ? {} : validateEmail(email)),
-        ...(createdAccount ? {} : validatePassword(password)),
+        ...(createdAccount || emailFirstReady ? {} : validatePassword(password)),
       }
     if (target === 2)
       return {
@@ -388,6 +408,7 @@ export default function Register() {
     // replace: mesmo motivo do Login — depois de autenticado, cadastro/login não devem
     // continuar acessíveis pelo botão voltar.
     track('Signup complete')
+    trackAuthEvent('onboarding_completed', { flow: 'legacy' })
     navigate('/app', { replace: true })
     return true
   }
@@ -431,13 +452,26 @@ export default function Register() {
         }
         const captchaToken = takeCaptchaToken(captcha)
         signupStarted.current = true
+        trackAuthEvent('signup_requested', { flow: emailFirstReady ? 'email_first' : 'legacy' })
+        if (emailFirstReady) {
+          const outcome = await requestEmailFirstSignup(email.trim(), captchaToken)
+          if (outcome === 'verification_required') trackAuthEvent('verification_required', { flow: 'email_first' })
+          setSignupOutcome(outcome)
+          setStep('confirm')
+          setCooldown(RESEND_COOLDOWN_S)
+          return
+        }
         const credential = await registerUser(email.trim(), password, captchaToken)
+        if (credential.outcome === 'unexpected_session') {
+          setStep('unavailable')
+          return
+        }
         if (!credential.hasSession) {
-          // Sem sessão não sabemos se houve envio. O código é uma opção, não a
-          // próxima etapa obrigatória; uma duplicidade explícita também chega aqui.
+          // A solicitação pode ter sido aceita, ofuscada ou perdido a resposta.
+          // Nenhum destes resultados comprova entrega ou existência da conta.
+          if (credential.outcome === 'verification_required') trackAuthEvent('verification_required', { flow: 'legacy' })
           setSignupOutcome(credential.outcome)
-          signupStarted.current = false
-          setStep('outcome')
+          setStep('confirm')
           setCooldown(RESEND_COOLDOWN_S)
           return
         }
@@ -445,10 +479,19 @@ export default function Register() {
         // Retentativas com sessão retomam as etapas idempotentes, sem outro signUp.
         setCreatedAccount(uid)
       }
+      if (emailFirstReady) {
+        setStep('password')
+        return
+      }
       await completeProfile(uid)
     } catch (err) {
-      // signUp não criou nada (ou não se sabe): libera um novo envio pelo caminho normal.
-      if (!createdAccount) signupStarted.current = false
+      reportAuthOutcome(err)
+      // Erros definitivos permitem correção dos campos e nova tentativa.
+      if (!createdAccount && err?.code !== 'SIGNUP_UNEXPECTED_SESSION') signupStarted.current = false
+      if (err?.code === 'SIGNUP_UNEXPECTED_SESSION') {
+        setStep('unavailable')
+        return
+      }
       const described = describeRegistrationError(err)
       if (err?.code === 'email_address_invalid') showFieldErrors({ email: described.message })
       else if (err?.code === 'weak_password') showFieldErrors({ password: described.message })
@@ -475,6 +518,17 @@ export default function Register() {
     inFlight.current = true
     setSubmitting(true)
     try {
+      if (emailFirstReady) {
+        const result = await confirmEmailFirstOtp(email.trim(), otpCode.trim())
+        trackAuthEvent('otp_verified', { flow: 'email_first' })
+        if (result.outcome === 'existing_account') {
+          setStep('existing')
+          return
+        }
+        setCreatedAccount(result.uid)
+        setStep('password')
+        return
+      }
       // Confirma o código e só então alinha a senha da conta com a deste formulário --
       // nunca nas duas etapas separadas: se a senha não puder ser confirmada, a sessão já
       // é encerrada aqui dentro (ver nota de pre-account hijacking em authService.js) e o
@@ -484,6 +538,7 @@ export default function Register() {
         otpCode.trim(),
         password
       )
+      trackAuthEvent('otp_verified', { flow: 'legacy' })
       setCreatedAccount(confirmedAccount.uid)
       const ok = await completeProfile(confirmedAccount.uid)
       // completeProfile já preenche `error` (e a etapa do campo a corrigir, se houver); volta ao
@@ -491,10 +546,54 @@ export default function Register() {
       // completeProfile direto de novo).
       if (!ok) setStep('form')
     } catch (err) {
+      reportAuthOutcome(err)
       if (err?.code === 'PASSWORD_SYNC_FAILED') {
         setStep('locked')
       } else {
         setConfirmError(describeRegistrationError(err).message)
+      }
+    } finally {
+      inFlight.current = false
+      if (mounted.current) setSubmitting(false)
+    }
+  }
+
+  async function finishEmailFirstSignup(e) {
+    e.preventDefault()
+    if (inFlight.current) return
+    const errors = validatePasswordConfirmation(password, confirmPassword)
+    setPasswordErrors(errors)
+    if (hasErrors(errors)) return
+    inFlight.current = true
+    setSubmitting(true)
+    setError('')
+    try {
+      if (!onboardingFinished.current) {
+        await syncEmailFirstPassword(password)
+        trackAuthEvent('password_changed', { flow: 'email_first' })
+        await completeEmailFirstOnboarding({
+          username: username.trim().toLowerCase(),
+          sexo,
+          birthDate,
+          usageProfile,
+          residenceMunicipalityCode: cityCode,
+        }, legalBundle, confirmed)
+        trackAuthEvent('onboarding_completed', { flow: 'email_first' })
+        onboardingFinished.current = true
+      }
+      await logoutUser()
+      navigate('/login', { replace: true, state: { email, registrationComplete: true } })
+    } catch (err) {
+      reportAuthOutcome(err)
+      const described = describeRegistrationError(err)
+      if (described.field) {
+        showFieldErrors({ [described.field]: described.message })
+        setStep('form')
+        setError('Corrija o campo indicado para concluir seu cadastro.')
+      } else if (err?.code === 'PASSWORD_SYNC_FAILED') {
+        setError('Não foi possível concluir a definição da senha com segurança. Tente novamente.')
+      } else {
+        setError('Não foi possível concluir o cadastro. Seus dados permanecem nesta página; tente novamente.')
       }
     } finally {
       inFlight.current = false
@@ -509,7 +608,10 @@ export default function Register() {
     setConfirmError('')
     setResent(false)
     try {
-      await sendVerificationEmail(email.trim(), takeCaptchaToken(captcha))
+      if (emailFirstReady)
+        await requestEmailFirstSignup(email.trim(), takeCaptchaToken(captcha))
+      else
+        await sendVerificationEmail(email.trim(), takeCaptchaToken(captcha))
       if (mounted.current) {
         setResent(true)
         setCooldown(RESEND_COOLDOWN_S)
@@ -527,8 +629,60 @@ export default function Register() {
   // a partir de uma sessão ativa trocaria a conta da aba. Não vale para a sessão criada por ESTE
   // cadastro (signupStarted), que precisa terminar o perfil antes de sair desta página. Uma conta
   // logada com perfil incompleto vai para /app, onde ProfileCompletionGate conclui o cadastro.
-  if (!authLoading && user && !signupStarted.current && !createdAccount) {
+  if (!authLoading && user && serverAccessAllowed === true && !signupStarted.current && !createdAccount) {
     return <Navigate to="/app" replace />
+  }
+
+  if (step === 'unavailable') {
+    return (
+      <AuthLayout
+        variant="signup"
+        title="Cadastro temporariamente indisponível"
+        description="Não foi possível continuar com segurança. Tente novamente mais tarde."
+        footer={<Link as={RouterLink} to="/login">Voltar para entrar</Link>}
+      />
+    )
+  }
+
+  if (step === 'existing') {
+    return (
+      <AuthLayout
+        variant="signup"
+        title="Continue com seu e-mail"
+        description="Para continuar, entre com sua senha ou use a recuperação de acesso."
+      >
+        <Stack gap="normal">
+          <Button as={RouterLink} to="/login" variant="primary" size="large" block>Entrar</Button>
+          <Link as={RouterLink} to="/esqueci-senha" state={{ email }}>Recuperar senha</Link>
+        </Stack>
+      </AuthLayout>
+    )
+  }
+
+  if (step === 'password') {
+    return (
+      <AuthLayout
+        variant="signup"
+        title="Defina sua senha"
+        description="Seu e-mail foi confirmado. Escolha a senha que usará para entrar no Evolutus."
+      >
+        <form onSubmit={finishEmailFirstSignup} className="public-form">
+          <Stack gap="normal">
+            {error && <Flash role="alert" variant="danger">{error}</Flash>}
+            <NewPasswordFields
+              password={password}
+              onPasswordChange={(value) => { setField('password', value); setPasswordErrors({}) }}
+              confirmPassword={confirmPassword}
+              onConfirmPasswordChange={(value) => { setConfirmPassword(value); setPasswordErrors({}) }}
+              fieldErrors={passwordErrors}
+            />
+            <Button type="submit" variant="primary" size="large" block loading={submitting} disabled={submitting}>
+              Concluir cadastro
+            </Button>
+          </Stack>
+        </form>
+      </AuthLayout>
+    )
   }
 
   if (step === 'locked') {
@@ -563,56 +717,12 @@ export default function Register() {
     )
   }
 
-  if (step === 'outcome') {
-    return (
-      <AuthLayout
-        variant="signup"
-        title="Continue com seu e-mail"
-        description={
-          signupOutcome === 'duplicate'
-            ? 'Não foi possível criar uma nova conta com este e-mail. Escolha como continuar.'
-            : 'Não foi possível confirmar a criação da conta nem o envio de um código. Escolha como continuar.'
-        }
-      >
-        <Stack gap="normal">
-          <Button
-            type="button"
-            variant="primary"
-            size="large"
-            block
-            onClick={() => setStep('confirm')}
-          >
-            Tenho um código
-          </Button>
-          <Button as={RouterLink} to="/login" size="large" block>
-            Entrar
-          </Button>
-          <Button as={RouterLink} to="/esqueci-senha" state={{ email }} size="large" block>
-            Recuperar acesso
-          </Button>
-          <Button
-            type="button"
-            size="large"
-            block
-            onClick={() => {
-              setStep('form')
-              setFormStep(1)
-              signupStarted.current = false
-            }}
-          >
-            Corrigir e-mail
-          </Button>
-        </Stack>
-      </AuthLayout>
-    )
-  }
-
   if (step === 'confirm') {
     return (
       <AuthLayout
         variant="signup"
         title="Confirme seu e-mail"
-        description="Se este endereço puder receber uma confirmação, um código poderá chegar em breve. Digite o código para continuar."
+        description="Confira sua caixa de entrada. Se recebeu um código, informe-o abaixo para continuar."
         footer={
           // Texto neutro de propósito -- nem confirma nem nega que já existe uma conta
           // com este e-mail (um signUp repetido no Supabase hospedado pode devolver uma
@@ -636,6 +746,11 @@ export default function Register() {
             {confirmError && (
               <Flash role="alert" variant="danger">
                 {confirmError}
+              </Flash>
+            )}
+            {signupOutcome === 'request_uncertain' && (
+              <Flash role="status">
+                Não foi possível confirmar a solicitação. Se recebeu um código, você pode informá-lo aqui.
               </Flash>
             )}
             {error && (
@@ -671,8 +786,13 @@ export default function Register() {
               loading={submitting}
               disabled={submitting || resending || otpCode.trim().length !== 6}
             >
-              Confirmar
+              Confirmar e-mail
             </Button>
+            {/* O GoTrue não aceita CAPTCHA em verifyOtp (campo depreciado no SDK); a defesa
+                dessa chamada é o rate limit nativo de tentativas de verificação, não o widget
+                abaixo. O CAPTCHA aqui protege só o reenvio -- por isso fica preso a ele, não ao
+                Confirmar e-mail acima. */}
+            <p>Verificação de segurança necessária para reenviar o código:</p>
             <AuthCaptcha ref={captcha} onVerifiedChange={setCaptchaVerified} />
             <Button
               type="button"
@@ -692,6 +812,7 @@ export default function Register() {
                 setFormStep(1)
                 setOtpCode('')
                 setConfirmError('')
+                setSignupOutcome(null)
                 signupStarted.current = false
               }}
             >
@@ -703,14 +824,17 @@ export default function Register() {
     )
   }
 
+  if (emailFirstReady === null) {
+    return <AuthLayout variant="signup" title="Preparando cadastro" description="Aguarde um instante." />
+  }
+
   const usernameValue = username.trim().toLowerCase()
   const usernameAvailable =
     !fieldErrors.username &&
     usernameStatus.state === 'available' &&
     usernameStatus.value === usernameValue
   const passwordRules = [
-    { label: `${PASSWORD_MIN_LENGTH}+ caracteres`, met: password.length >= PASSWORD_MIN_LENGTH },
-    { label: 'letras e números', met: /[A-Za-z]/.test(password) && /\d/.test(password) },
+    { label: `${PASSWORD_MIN_LENGTH}+ caracteres`, met: Array.from(password).length >= PASSWORD_MIN_LENGTH },
   ]
   const busy = submitting || checkingStep
   const copy = STEP_COPY[formStep]
@@ -811,7 +935,7 @@ export default function Register() {
                 )}
               </FormControl>
 
-              <FormControl required disabled={busy || Boolean(createdAccount)}>
+              {!emailFirstReady && <FormControl required disabled={busy || Boolean(createdAccount)}>
                 <FormControl.Label>Senha</FormControl.Label>
                 <TextInput
                   type={showPassword ? 'text' : 'password'}
@@ -850,7 +974,7 @@ export default function Register() {
                     {fieldErrors.password}
                   </FormControl.Validation>
                 )}
-              </FormControl>
+              </FormControl>}
             </>
           )}
 

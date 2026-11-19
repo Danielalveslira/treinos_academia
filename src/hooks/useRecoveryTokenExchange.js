@@ -24,9 +24,16 @@ export function useRecoveryTokenExchange() {
   }, [])
 
   useEffect(() => {
-    const tokenHash = searchParams.get('token_hash')
-    const type = searchParams.get('type')
+    const browser = globalThis.window
+    const boot = browser?.__EVOLUTUS_RECOVERY_TOKEN
+    if (browser) delete browser.__EVOLUTUS_RECOVERY_TOKEN
+    const fragment = new URLSearchParams(browser?.location.hash.slice(1) || '')
+    const source = fragment.has('token_hash') ? fragment : searchParams
+    const tokenHash = boot?.tokenHash || source.get('token_hash')
+    const type = boot?.type || source.get('type')
     setSearchParams({}, { replace: true })
+    if (browser?.location.hash)
+      browser.history.replaceState(browser.history.state, '', browser.location.pathname)
     if (!tokenHash || type !== 'recovery') {
       setStatus('invalid')
       return

@@ -7,6 +7,7 @@ import {
   authCaptchaRequired,
   authCaptchaSiteKey,
 } from '../utils/authCaptcha'
+import { trackAuthEvent } from '../utils/authAnalytics'
 
 const TOKEN_MAX_AGE_MS = 100_000
 const LOAD_TIMEOUT_MS = 15_000
@@ -27,6 +28,7 @@ export const AuthCaptcha = forwardRef(function AuthCaptcha({ onVerifiedChange },
   }
 
   function invalidate(nextStatus) {
+    if (nextStatus === 'error') trackAuthEvent('captcha_failed')
     token.current = null
     clearExpiry()
     setStatus(nextStatus)
@@ -49,6 +51,7 @@ export const AuthCaptcha = forwardRef(function AuthCaptcha({ onVerifiedChange },
       return current.value
     },
     reset() {
+      if (!authCaptchaRequired) return
       invalidate('ready')
       widget.current?.resetCaptcha()
     },
@@ -57,7 +60,11 @@ export const AuthCaptcha = forwardRef(function AuthCaptcha({ onVerifiedChange },
   useEffect(() => {
     if (!authCaptchaRequired || authCaptchaConfigurationError) return undefined
     loadTimer.current = setTimeout(
-      () => setStatus((value) => (value === 'loading' ? 'error' : value)),
+      () => setStatus((value) => {
+        if (value !== 'loading') return value
+        trackAuthEvent('captcha_failed')
+        return 'error'
+      }),
       LOAD_TIMEOUT_MS
     )
     return () => {

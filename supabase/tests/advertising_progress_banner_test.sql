@@ -80,6 +80,13 @@ select public._ledger_record('76930000-0000-0000-0000-000000000003','synthetic-p
 select pg_temp.set_test_user('76930000-0000-0000-0000-000000000003',true);
 set local role authenticated;
 select is(public.select_advertising('progress_banner',null),'[]'::jsonb,'aprovado sem contratação ainda não é entregue');
+
+-- 20261222000010: advertising_sales_status agora inclui tarifa (preço/faixa de dias) por
+-- posicionamento vendável, reaproveitando a mesma oferta/versão de preço vigente.
+select is((select x->'tariff'->>'price' from jsonb_array_elements(public.advertising_sales_status()) x where x->>'code'='progress_banner'),'7','tarifa vigente aparece na leitura fina do anunciante');
+select is((select (x->'tariff'->>'minDays')::integer from jsonb_array_elements(public.advertising_sales_status()) x where x->>'code'='progress_banner'),1,'faixa mínima de dias aparece na leitura fina');
+select is((select (x->'tariff'->>'maxDays')::integer from jsonb_array_elements(public.advertising_sales_status()) x where x->>'code'='progress_banner'),30,'faixa máxima de dias aparece na leitura fina');
+
 insert into progress_results values('quote',public.quote_commercial_order('76950000-0000-0000-0000-000000000001','2',gen_random_uuid()));
 select is((select value->>'totalCash' from progress_results where name='quote'),'14','preço de dois dias é calculado no servidor');
 insert into progress_results values('paid',pg_temp.confirm_with_terms((select (value->>'id')::uuid from progress_results where name='quote'),true));
@@ -129,6 +136,8 @@ update public.advertising_placements set sales_enabled=false where code='progres
 set local role authenticated;
 select ok(exists(select 1 from jsonb_array_elements(public.select_advertising('progress_banner',null)) x
   where x->>'id'='76950000-0000-0000-0000-000000000001'),'pausar vendas preserva entrega contratada');
+select is((select x->>'salesEnabled' from jsonb_array_elements(public.advertising_sales_status()) x where x->>'code'='progress_banner'),'false','vendas pausadas refletem salesEnabled=false');
+select is((select x->'tariff' from jsonb_array_elements(public.advertising_sales_status()) x where x->>'code'='progress_banner'),'null'::jsonb,'tarifa não aparece quando a venda está pausada, mesmo com versão de preço ainda vigente');
 reset role;
 update public.advertising_placements set delivery_enabled=false where code='progress_banner';
 set local role authenticated;

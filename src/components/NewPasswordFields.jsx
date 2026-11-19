@@ -1,4 +1,5 @@
 import { FormControl, TextInput } from '@primer/react'
+import { PASSWORD_MAX_BYTES, PASSWORD_MIN_LENGTH } from '../utils/validators'
 
 // Compartilhado por ResetPassword.jsx e ConfirmEmail.jsx (mesma etapa "defina uma senha
 // nova", só o que acontece antes e depois é diferente -- ver validatePasswordConfirmation).
@@ -18,11 +19,11 @@ export function NewPasswordFields({
           value={password}
           onChange={(e) => onPasswordChange(e.target.value)}
           autoComplete="new-password"
-          minLength={8}
+          minLength={PASSWORD_MIN_LENGTH}
           size="large"
           block
         />
-        <FormControl.Caption>Mínimo de 8 caracteres, com letras e números.</FormControl.Caption>
+        <FormControl.Caption>Mínimo de {PASSWORD_MIN_LENGTH} caracteres e máximo de {PASSWORD_MAX_BYTES} bytes. Frases e espaços são permitidos.</FormControl.Caption>
         {fieldErrors.password && (
           <FormControl.Validation variant="error">{fieldErrors.password}</FormControl.Validation>
         )}
@@ -35,7 +36,7 @@ export function NewPasswordFields({
           value={confirmPassword}
           onChange={(e) => onConfirmPasswordChange(e.target.value)}
           autoComplete="new-password"
-          minLength={8}
+          minLength={PASSWORD_MIN_LENGTH}
           size="large"
           block
         />
