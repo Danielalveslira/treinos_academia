@@ -200,6 +200,56 @@ try {
   await page.waitForURL(/\/login(?:\/|$)/, { timeout: 20000 })
   ok(true, 'logout pela interface retorna ao login')
 
+  if (!LEGACY) {
+    console.log('--- 7. recuperação e falha de comunicação ---')
+    await page.getByRole('link', { name: 'Esqueci minha senha' }).click()
+    await page.getByRole('heading', { name: 'Recuperar senha' }).waitFor()
+    await page.getByLabel('E-mail').fill(email)
+    let interrupted = false
+    const interruptRecover = async (route) => {
+      interrupted = true
+      await route.abort('failed')
+    }
+    await page.route('**/auth/v1/recover*', interruptRecover)
+    await page.getByRole('button', { name: 'Enviar link' }).click()
+    await page.getByRole('alert').waitFor({ timeout: 15000 })
+    ok(interrupted && await page.getByText('Se este e-mail tiver acesso à recuperação').count() === 0,
+      'falha de comunicação na recuperação não declara envio concluído')
+    await page.unroute('**/auth/v1/recover*', interruptRecover)
+    consoleErrors.length = 0
+    // NÃO repete o clique sem a interceptação: esta stack isolada não tem SMTP configurado
+    // (GOTRUE_SMTP_HOST aponta para nada em local-stack.sh, de propósito -- sem exigir um
+    // provedor real para o resto da homologação), então uma chamada resetPasswordForEmail de
+    // verdade SEMPRE falharia aqui com "Error sending recovery email", pela falta de SMTP, não
+    // por um bug. ForgotPassword.jsx já documenta a distinção correta (comentário no próprio
+    // handleSubmit): mensagem neutra no sucesso, erro técnico só numa falha real de rede/
+    // servidor -- mostrar o erro técnico aqui é o comportamento certo, não uma regressão. A
+    // mensagem neutra em cima de um envio REAL só é verificável com SMTP real, em staging.
+
+    console.log('--- 8. cadastro com e-mail já existente ---')
+    await page.goto(`http://127.0.0.1:${PORT}/cadastro`, { waitUntil: 'networkidle' })
+    await page.fill('input[autocomplete="username"]', `${username}duplicate`)
+    await page.fill('input[autocomplete="email"]', email)
+    await page.waitForSelector('text=está disponível', { timeout: 10000 })
+    await page.click('button[type="submit"]')
+    await page.waitForSelector('input[autocomplete="bday"]', { timeout: 15000 })
+    await page.fill('input[autocomplete="bday"]', '1990-01-01')
+    const duplicateCity = page.getByLabel('Cidade onde mora')
+    await duplicateCity.fill('São Paulo')
+    await page.waitForSelector('[role="option"]', { timeout: 10000 })
+    await page.keyboard.press('Enter')
+    await page.selectOption('select', 'nao_informar')
+    await page.click('button[type="submit"]')
+    await page.waitForSelector('fieldset.usage-profile-field', { timeout: 15000 })
+    await page.locator('fieldset.usage-profile-field input[type="radio"]').first().check()
+    const duplicateConsents = page.locator('.signup-consent input[type="checkbox"]')
+    for (let i = 0; i < await duplicateConsents.count(); i++) await duplicateConsents.nth(i).check()
+    await page.click('button[type="submit"]:has-text("Criar conta")')
+    await page.waitForSelector('text=Confirme seu e-mail', { timeout: 20000 })
+    ok(!page.url().includes('/app') && await page.getByText('Já tem uma conta?').count() > 0,
+      'e-mail existente recebe etapa neutra sem acesso ao app')
+  }
+
   ok(consoleErrors.length === 0, `sem erros inesperados no console (${consoleErrors.length} encontrados: ${consoleErrors.slice(0, 3).join(' | ')})`)
 
   console.log('Chamadas reais por endpoint:', JSON.stringify(Object.fromEntries([...requestCounts].sort())))

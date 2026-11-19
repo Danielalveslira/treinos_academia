@@ -51,6 +51,7 @@ export const AuthCaptcha = forwardRef(function AuthCaptcha({ onVerifiedChange },
       return current.value
     },
     reset() {
+      if (!authCaptchaRequired) return
       invalidate('ready')
       widget.current?.resetCaptcha()
     },
