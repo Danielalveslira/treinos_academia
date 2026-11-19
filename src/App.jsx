@@ -50,6 +50,7 @@ const EconomyGuide = lazy(() => import('./pages/EconomyGuide'))
 const AdminCashPurchases = lazy(() => import('./pages/AdminCashPurchases'))
 const AdminPromotions = lazy(() => import('./pages/AdminPromotions'))
 const AdminExerciseCatalog = lazy(() => import('./pages/AdminExerciseCatalog'))
+const AdminMfa = lazy(() => import('./pages/AdminMfa'))
 const MyPromotions = lazy(() => import('./pages/MyPromotions'))
 const ProfessionalListing = lazy(() => import('./pages/ProfessionalListing'))
 const MyProfessionalListing = lazy(() => import('./pages/ProfessionalListingsHub'))
@@ -134,6 +135,10 @@ export function AppRoutes() {
         <Route path="/vitrine/gerenciar" element={<MyProductStorefronts />} />
         <Route path="/minha-vitrine" element={<MyProfessionalListing />} />
         <Route path="/comunidades/criar" element={<CreateCommunity />} />
+        <Route
+          path="/admin/mfa"
+          element={<AdminMfa />}
+        />
         <Route
           path="/admin/compras-evocash"
           element={

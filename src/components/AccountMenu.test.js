@@ -223,11 +223,12 @@ test('Explorar contém exatamente dois links de documento público para todos os
   assert.equal(mod.ACCOUNT_ITEMS.some((item) => item.to === '/profissionais'), false)
 })
 
-test('ADMIN_ITEMS continua com as mesmas 9 rotas administrativas', () => {
-  assert.equal(mod.ADMIN_ITEMS.length, 9)
+test('ADMIN_ITEMS inclui a configuração MFA junto das rotas administrativas', () => {
+  assert.equal(mod.ADMIN_ITEMS.length, 10)
   const routes = mod.ADMIN_ITEMS.map((item) => item.to)
   assert.deepEqual(routes, [
     '/admin/comunidades',
+    '/admin/mfa',
     '/admin/parcerias',
     '/admin/contas',
     '/admin/exclusao-contas',
@@ -253,7 +254,7 @@ test('renderAdminSection: recolhida por padrão não expõe as 9 rotas; expandid
   assert.equal(trigger.props['aria-controls'], 'account-menu-admin-list')
   assert.equal(hiddenWrapper.props.hidden, true)
   assert.equal(hiddenWrapper.props.id, 'account-menu-admin-list')
-  assert.equal(hiddenWrapper.props.children.length, 9)
+  assert.equal(hiddenWrapper.props.children.length, 10)
 
   const expanded = mod.renderAdminSection({
     expanded: true,
