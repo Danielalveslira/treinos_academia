@@ -32,7 +32,11 @@ for (const file of files) {
     exit = error.status ?? 1
     output = `${error.stdout || ''}\n${error.stderr || ''}`
   }
-  const assertions = output.match(/^not ok\b.*$/gm) || []
+  // psql's default aligned output pads a single-column text result with a leading space
+  // ("not ok 11 - ..." renders as " not ok 11 - ..."); anchoring on ^not ok silently missed
+  // every TAP failure line caught only by throws_ok (not by ON_ERROR_STOP), since those never
+  // raise a nonzero psql exit code either.
+  const assertions = output.match(/^\s*not ok\b.*$/gm) || []
   if (exit || assertions.length || !/All tests successful\.|^\s*finish\s*$/m.test(output)) {
     failed.push(file)
     console.error(`FAIL ${file} (exit ${exit})\n${assertions.join('\n') || output.slice(-1600)}`)

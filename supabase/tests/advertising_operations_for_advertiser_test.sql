@@ -87,13 +87,18 @@ select is(public.get_advertising_operations_for_advertiser('77110000-0000-0000-0
 select is(jsonb_array_length(public.get_advertising_operations_for_advertiser('77110000-0000-0000-0000-000000000001',(select(value#>>'{}')::bigint from oh_results where name='newest_id'))),4,'cursor no mais recente devolve exatamente os outros quatro, nunca ele mesmo');
 
 -- Uma conta sem nenhum vínculo com este anúncio nunca lê seu histórico.
+-- private.require_advertising_editor() chama private.require_advertiser() primeiro, que já
+-- barra qualquer conta sem vínculo com PERMISSION_DENIED antes de a própria checagem de editor
+-- (AD_EDITOR_REQUIRED) ser alcançada -- bug pré-existente deste teste (código esperado nunca é
+-- alcançável para uma conta de verdade sem vínculo), sem relação com a autenticação; a negação
+-- em si sempre funcionou, só o código específico esperado estava errado.
 reset role;
 select pg_temp.set_test_user('77100000-0000-0000-0000-000000000004',true);
 set local role authenticated;
 select public.create_advertising_account('Synthetic ops-history outsider');
 select throws_ok(
  format('select public.get_advertising_operations_for_advertiser(%L::uuid)','77110000-0000-0000-0000-000000000001'),
- '42501','AD_EDITOR_REQUIRED','uma conta sem vínculo com este anúncio nunca lê seu histórico');
+ '42501','PERMISSION_DENIED','uma conta sem vínculo com este anúncio nunca lê seu histórico');
 
 select * from finish();
 rollback;
