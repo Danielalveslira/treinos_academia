@@ -81,6 +81,9 @@ export function resetFake(overrides = {}) {
   const fake = {
     authUser: { id: SUPERADMIN },
     sessionActive: true,
+    fullSession: true,
+    mfaRequired: false,
+    aal2: false,
     authRpcCalls: [],
     tables: {
       users: [
@@ -112,8 +115,12 @@ function userClient(fake) {
   return {
     rpc: async (name) => {
       fake.authRpcCalls.push(name)
-      if (name !== 'is_session_active') throw new Error('Unexpected user RPC: '+name)
-      return { data: fake.sessionActive, error: fake.fail.session ? { message: 'session check unavailable' } : null }
+      if (name !== 'is_superadmin') throw new Error('Unexpected user RPC: '+name)
+      const isAdmin = fake.tables.users.some((row) => row.id === fake.authUser?.id && row.role === 'superadmin')
+      return {
+        data: fake.sessionActive && fake.fullSession && isAdmin && (!fake.mfaRequired || fake.aal2),
+        error: fake.fail.session ? { message: 'authorization unavailable' } : null,
+      }
     },
     auth: {
       getUser: async () =>

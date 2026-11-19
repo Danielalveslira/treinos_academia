@@ -20,6 +20,8 @@ Deno.serve(async (req) => {
     const userClient = createClient(url, anonKey, { global: { headers: { Authorization: auth } } })
     const { data, error } = await userClient.auth.getUser()
     if (error || !data.user) return json({ error: 'NOT_AUTHENTICATED' }, 401)
+    const { data: fullSession, error: sessionError } = await userClient.rpc('is_full_login_session')
+    if (sessionError || fullSession !== true) return json({ error: 'APP_ACCESS_DENIED' }, 403)
     const admin = createClient(url, serviceKey)
     const result = await createCheckout({ userClient, admin, quoteId: body.quoteId, requestId: body.requestId,
       enabled: Deno.env.get('INFINITEPAY_CHECKOUT_ENABLED') === 'true', handle, apiKey: Deno.env.get('INFINITEPAY_API_KEY'), appUrl, supabaseUrl: url })
